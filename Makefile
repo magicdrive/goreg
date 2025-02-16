@@ -64,6 +64,7 @@ clean:
 publish:
 	@if [ -z "$(tag)" ]; then \
 		echo "Error: version is not set. Please set it and try again."; \
+		echo "ex) make public tag=v0.0.1"; \
 		exit 1; \
 		fi
 	git tag $(tag)
