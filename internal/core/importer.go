@@ -1,66 +1,34 @@
-package main
+package core
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"log"
-	"os"
-	"os/exec"
 	"sort"
 	"strings"
-
-	"golang.org/x/tools/imports"
 )
 
-type importGroup int
-
-const (
-	stdLib importGroup = iota
-	thirdParty
-	local
-)
-
-var modulePath string
-
-func getModulePath() string {
-	if modulePath != "" {
-		return modulePath
-	}
-	cmd := exec.Command("go", "list", "-m")
-	out, err := cmd.Output()
-	if err != nil {
-		log.Fatal("Error: Failed to get module path. Ensure this is a Go module project (with go.mod).")
-	}
-	modulePath = strings.TrimSpace(string(out))
-	return modulePath
-}
-
-func formatImports(src []byte) ([]byte, error) {
+func FormatImports(src []byte) ([]byte, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", src, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	importsMap := make(map[string]struct {
-		Doc []string
-		End []string
-	})
+	importsMap := make(map[string]ImportBlock)
 	var stdLibImports, thirdPartyImports, localImports []string
 
 	for _, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		group := getImportGroup(path, modulePath)
+		group := GetImportGroup(path, ModulePath)
 
-		docComments, endComments := extractComments(imp)
-		importsMap[path] = struct {
-			Doc []string
-			End []string
-		}{Doc: docComments, End: endComments}
+		docComments, endComments := ExtractComments(imp)
+		importsMap[path] = ImportBlock{
+			Doc: docComments,
+			End: endComments,
+		}
 
 		switch group {
 		case stdLib:
@@ -91,15 +59,15 @@ func formatImports(src []byte) ([]byte, error) {
 	}
 
 	for i, group := range groups {
-		writeImports(&buf, group, importsMap, i == 0, i == len(groups)-1)
+		WriteImports(&buf, group, importsMap, i == 0, i == len(groups)-1)
 	}
 
 	buf.WriteString(")\n")
 
-	return replaceImports(src, buf.String()), nil
+	return ReplaceImports(src, buf.String()), nil
 }
 
-func getImportGroup(pkg string, modulePath string) importGroup {
+func GetImportGroup(pkg string, modulePath string) ImportGroup {
 	if !strings.Contains(pkg, ".") {
 		return stdLib
 	}
@@ -109,10 +77,7 @@ func getImportGroup(pkg string, modulePath string) importGroup {
 	return thirdParty
 }
 
-func writeImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]struct {
-	Doc []string
-	End []string
-}, isFirtGroup bool, isLastGroup bool) {
+func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]ImportBlock, isFirtGroup bool, isLastGroup bool) {
 	for i, imp := range pkgs {
 		comments, exists := importsMap[imp]
 		if !exists {
@@ -146,7 +111,7 @@ func writeImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]struct
 	}
 }
 
-func extractComments(imp *ast.ImportSpec) ([]string, []string) {
+func ExtractComments(imp *ast.ImportSpec) ([]string, []string) {
 	var docComments []string
 	var endComments []string
 
@@ -163,7 +128,7 @@ func extractComments(imp *ast.ImportSpec) ([]string, []string) {
 	return docComments, endComments
 }
 
-func replaceImports(src []byte, newImports string) []byte {
+func ReplaceImports(src []byte, newImports string) []byte {
 	srcStr := string(src)
 	start := strings.Index(srcStr, "import (")
 	if start == -1 {
@@ -189,48 +154,4 @@ func replaceImports(src []byte, newImports string) []byte {
 	}
 
 	return []byte(srcStr[:start] + newImports + srcStr[end:])
-}
-
-func processFile(filename string, writeToFile bool) error {
-	src, err := os.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	formatted, err := imports.Process(filename, src, &imports.Options{
-		FormatOnly: true,
-		Comments:   true,
-	})
-	if err != nil {
-		return err
-	}
-
-	sorted, err := formatImports(formatted)
-	if err != nil {
-		return err
-	}
-
-	if writeToFile {
-		return os.WriteFile(filename, sorted, 0644)
-	} else {
-		_, err := os.Stdout.Write(sorted)
-		return err
-	}
-}
-
-func main() {
-	flag.Parse()
-	writeToFile := flag.Lookup("w") != nil
-
-	if len(flag.Args()) < 1 {
-		fmt.Println("Usage: goreg [-w] <file.go>")
-		os.Exit(1)
-	}
-	filename := flag.Arg(0)
-
-	modulePath = getModulePath()
-
-	if err := processFile(filename, writeToFile); err != nil {
-		log.Fatal(err)
-	}
 }
