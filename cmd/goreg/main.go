@@ -1,25 +1,31 @@
-package main
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/magicdrive/goreg/internal/commandline"
 	"github.com/magicdrive/goreg/internal/core"
 )
 
-func main() {
-	flag.Parse()
-	writeToFile := flag.Lookup("w") != nil
+func Execute(version string) {
 
-	if len(flag.Args()) < 1 {
-		fmt.Println("Usage: goreg [-w] <file.go>")
-		os.Exit(1)
+	_, opt, err := commandline.OptParse(os.Args[1:])
+	if err != nil {
+		log.Fatalf("Faital Error: %v\n", err)
 	}
-	filename := flag.Arg(0)
 
-	if err := core.Apply(filename, core.GetModulePath(), writeToFile); err != nil {
+	if opt.VersionFlag {
+		fmt.Printf("goreg version %s\n", version)
+		os.Exit(0)
+	}
+	if opt.HelpFlag {
+		opt.FlagSet.Usage()
+		os.Exit(0)
+	}
+
+	if err := core.Apply(opt.FileName, core.GetModulePath(), opt.WriteFlag); err != nil {
 		log.Fatal(err)
 	}
 }

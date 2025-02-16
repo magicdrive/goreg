@@ -1,0 +1,17 @@
+Usage: goreg [OPTIONS] <file-name.go>
+
+Description:
+   Yet another alternate `goimports` tool.
+   It arranges imports in the order of standard library, third-party libraries, and local libraries.
+
+Options:
+  -h, --help     Show this help message and exit
+  -v, --version  Show version.
+  -w, --write    Specify output mode. writes the results directly to the file.
+
+Arguments:
+  <file-name.go> Target Go file to be formatted.
+
+See Also:
+  https://github.com/magicdrive/goreg/README.md
+
