@@ -16,7 +16,7 @@ func OptParse(args []string) (int, *Option, error) {
 
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
 
-	// --help
+	// --write
 	writeFlagOpt := fs.Bool("write", false, "Show help message.")
 	fs.BoolVar(writeFlagOpt, "w", false, "Show help message.")
 
@@ -37,13 +37,11 @@ func OptParse(args []string) (int, *Option, error) {
 		return optLength, nil, err
 	}
 
+	var filename = ""
 	_args := fs.Args()
-	if len(args) == 0 {
-		fmt.Println("Error: a file name is required")
-		os.Exit(1)
+	if len(_args) > 0 {
+		filename = _args[0]
 	}
-
-	filename := _args[0]
 
 	result := &Option{
 		WriteFlag:   *writeFlagOpt,
@@ -52,12 +50,12 @@ func OptParse(args []string) (int, *Option, error) {
 		FileName:    filename,
 		FlagSet:     fs,
 	}
-	OverRideHelp(fs, false)
+	OverRideHelp(fs)
 
 	return optLength, result, nil
 }
 
-func OverRideHelp(fs *flag.FlagSet, noPagerFlag bool) *flag.FlagSet {
+func OverRideHelp(fs *flag.FlagSet) *flag.FlagSet {
 	fs.Usage = func() {
 		fmt.Print(helpMessage)
 	}
