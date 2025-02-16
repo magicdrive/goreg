@@ -7,5 +7,6 @@ type Option struct {
 	HelpFlag    bool
 	VersionFlag bool
 	FileName    string
+	ModulePath  string
 	FlagSet     *flag.FlagSet
 }

@@ -1,10 +1,11 @@
 package commandline
 
 import (
-	_ "embed"
 	"flag"
 	"fmt"
 	"os"
+
+	_ "embed"
 )
 
 //go:embed help.txt
@@ -15,6 +16,9 @@ func OptParse(args []string) (int, *Option, error) {
 	optLength := len(args)
 
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
+
+	modulePathOpt := fs.String("local", "", "Specify local modulepath.")
+	fs.StringVar(modulePathOpt, "l", "", "Specify local modulepath.")
 
 	// --write
 	writeFlagOpt := fs.Bool("write", false, "Show help message.")
@@ -47,6 +51,7 @@ func OptParse(args []string) (int, *Option, error) {
 		WriteFlag:   *writeFlagOpt,
 		HelpFlag:    *helpFlagOpt,
 		VersionFlag: *versionFlagOpt,
+		ModulePath:  *modulePathOpt,
 		FileName:    filename,
 		FlagSet:     fs,
 	}

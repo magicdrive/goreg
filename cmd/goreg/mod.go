@@ -30,7 +30,17 @@ func Execute(version string) {
 		os.Exit(1)
 	}
 
-	if err := core.Apply(opt.FileName, core.GetModulePath(), opt.WriteFlag); err != nil {
+	var modulePath = opt.ModulePath
+	if modulePath == "" {
+		if _modulePath, err := core.GetModulePath(); err != nil {
+			fmt.Println("Error: local modulepath not found. specify your local modulepath with --local option")
+			os.Exit(1)
+		} else {
+			modulePath = _modulePath
+		}
+	}
+
+	if err := core.Apply(opt.FileName, modulePath, opt.WriteFlag); err != nil {
 		log.Fatal(err)
 	}
 }

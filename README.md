@@ -26,16 +26,17 @@ goreg [OPTIONS] <file-name.go>
 
 ### Options
 
-| Option         | Description |
-|---------------|-------------|
+| Option            | Description |
+|-------------------|-------------|
 | `-h`, `--help`    | Show this help message and exit. |
 | `-v`, `--version` | Show version information. |
-| `-w`, `--write`   | Write the formatted output directly to the file. |
+| `-w`, `--write`   | Write the formatted output directly to the file. (optional)|
+| `-l`, `--local`   | Specify your local modulepath. (optional)|
 
 ### Arguments
 
 | Argument         | Description |
-|-----------------|-------------|
+|------------------|-------------|
 | `<file-name.go>` | Target Go file to be formatted. |
 
 ## Examples
