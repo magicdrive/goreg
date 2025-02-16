@@ -199,6 +199,28 @@ import (
 )
 `,
 			wantErr: false,
+		}, {
+			name: "Standardlib and aliased thirdParty",
+			input: `package main
+
+import (
+
+	/* Error handling */
+	errorlib "github.com/pkg/errors"
+
+	"fmt"
+)
+`,
+			expected: `package main
+
+import (
+	"fmt"
+
+	/* Error handling */
+	errorlib "github.com/pkg/errors"
+)
+`,
+			wantErr: false,
 		},
 	}
 

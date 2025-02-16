@@ -97,6 +97,7 @@ func sortImports(imports []string, importsMap map[string]ImportBlock) {
 func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]ImportBlock, isLastGroup bool) {
 	isFirstImport := true
 	isNoneAliasImport := true
+	isNoneAliasImportExist := false
 	for _, imp := range pkgs {
 		comments, exists := importsMap[imp]
 		if !exists {
@@ -114,12 +115,13 @@ func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]Import
 		}
 
 		if comments.Alias != "" {
-			if isNoneAliasImport {
+			if isNoneAliasImport && isNoneAliasImportExist {
 				buf.WriteString("\n")
 				isNoneAliasImport = false
 			}
 			fmt.Fprintf(buf, "\t%s \"%s\"", comments.Alias, imp)
 		} else {
+			isNoneAliasImportExist = true
 			fmt.Fprintf(buf, "\t\"%s\"", imp)
 		}
 
