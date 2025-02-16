@@ -9,6 +9,7 @@ const (
 )
 
 type ImportBlock struct {
-	Doc []string
-	End []string
+	Doc   []string
+	End   string
+	Alias string
 }

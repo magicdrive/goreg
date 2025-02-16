@@ -24,10 +24,11 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 		path := strings.Trim(imp.Path.Value, `"`)
 		group := GetImportGroup(path, modulePath)
 
-		docComments, endComments := ExtractComments(imp)
+		docComments, endComment, moduleAlias := ExtractComments(imp)
 		importsMap[path] = ImportBlock{
-			Doc: docComments,
-			End: endComments,
+			Doc:   docComments,
+			End:   endComment,
+			Alias: moduleAlias,
 		}
 
 		switch group {
@@ -40,9 +41,9 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 		}
 	}
 
-	sort.Strings(stdLibImports)
-	sort.Strings(thirdPartyImports)
-	sort.Strings(localImports)
+	sortImports(stdLibImports, importsMap)
+	sortImports(thirdPartyImports, importsMap)
+	sortImports(localImports, importsMap)
 
 	var buf bytes.Buffer
 	buf.WriteString("import (\n")
@@ -59,7 +60,8 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 	}
 
 	for i, group := range groups {
-		WriteImports(&buf, group, importsMap, i == 0, i == len(groups)-1)
+		isLastGroup := (i == len(groups)-1)
+		WriteImports(&buf, group, importsMap, isLastGroup)
 	}
 
 	buf.WriteString(")\n")
@@ -77,31 +79,52 @@ func GetImportGroup(pkg string, modulePath string) ImportGroup {
 	return thirdParty
 }
 
-func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]ImportBlock, isFirtGroup bool, isLastGroup bool) {
-	for i, imp := range pkgs {
+func sortImports(imports []string, importsMap map[string]ImportBlock) {
+	sort.SliceStable(imports, func(i, j int) bool {
+		aliasI := importsMap[imports[i]].Alias
+		aliasJ := importsMap[imports[j]].Alias
+
+		if aliasI == "" && aliasJ != "" {
+			return true
+		}
+		if aliasI != "" && aliasJ == "" {
+			return false
+		}
+		return imports[i] < imports[j]
+	})
+}
+
+func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]ImportBlock, isLastGroup bool) {
+	isFirstImport := true
+	isNoneAliasImport := true
+	for _, imp := range pkgs {
 		comments, exists := importsMap[imp]
 		if !exists {
 			fmt.Fprintf(buf, "\t\"%s\"\n", imp)
 			continue
 		}
 
-		if !isFirtGroup || i != 0 {
-			if len(comments.Doc) > 0 {
-				buf.WriteString("\n")
-			}
+		if !isFirstImport && len(comments.Doc) > 0 {
+			buf.WriteString("\n")
 		}
+		isFirstImport = false
 
 		for _, c := range comments.Doc {
 			buf.WriteString(fmt.Sprintf("\t%s\n", c))
 		}
 
-		fmt.Fprintf(buf, "\t\"%s\"", imp)
-
-		if len(comments.End) > 0 {
-			buf.WriteString(" //")
-			for _, c := range comments.End {
-				buf.WriteString(fmt.Sprintf(" %s", c))
+		if comments.Alias != "" {
+			if isNoneAliasImport {
+				buf.WriteString("\n")
+				isNoneAliasImport = false
 			}
+			fmt.Fprintf(buf, "\t%s \"%s\"", comments.Alias, imp)
+		} else {
+			fmt.Fprintf(buf, "\t\"%s\"", imp)
+		}
+
+		if comments.End != "" {
+			buf.WriteString(" " + comments.End)
 		}
 		buf.WriteString("\n")
 	}
@@ -111,21 +134,25 @@ func WriteImports(buf *bytes.Buffer, pkgs []string, importsMap map[string]Import
 	}
 }
 
-func ExtractComments(imp *ast.ImportSpec) ([]string, []string) {
+func ExtractComments(imp *ast.ImportSpec) ([]string, string, string) {
 	var docComments []string
-	var endComments []string
+	var endComment string
+	var alias string = ""
 
 	if imp.Doc != nil {
 		for _, c := range imp.Doc.List {
 			docComments = append(docComments, c.Text)
 		}
 	}
-	if imp.Comment != nil {
-		for _, c := range imp.Comment.List {
-			endComments = append(endComments, c.Text)
-		}
+	if imp.Comment != nil && len(imp.Comment.List) > 0 {
+		endComment = strings.TrimSpace(imp.Comment.List[0].Text)
 	}
-	return docComments, endComments
+
+	if imp.Name != nil {
+		alias = imp.Name.Name
+	}
+
+	return docComments, endComment, alias
 }
 
 func ReplaceImports(src []byte, newImports string) []byte {
