@@ -12,8 +12,6 @@ func Apply(filename string, _modulePath string, writeToFile bool) error {
 		return err
 	}
 
-	ModulePath = _modulePath
-
 	formatted, err := imports.Process(filename, src, &imports.Options{
 		FormatOnly: true,
 		Comments:   true,
@@ -22,7 +20,7 @@ func Apply(filename string, _modulePath string, writeToFile bool) error {
 		return err
 	}
 
-	sorted, err := FormatImports(formatted)
+	sorted, err := FormatImports(formatted, _modulePath)
 	if err != nil {
 		return err
 	}

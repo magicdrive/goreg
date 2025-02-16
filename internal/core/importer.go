@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func FormatImports(src []byte) ([]byte, error) {
+func FormatImports(src []byte, modulePath string) ([]byte, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", src, parser.AllErrors|parser.ParseComments)
 	if err != nil {
@@ -22,7 +22,7 @@ func FormatImports(src []byte) ([]byte, error) {
 
 	for _, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		group := GetImportGroup(path, ModulePath)
+		group := GetImportGroup(path, modulePath)
 
 		docComments, endComments := ExtractComments(imp)
 		importsMap[path] = ImportBlock{
@@ -68,11 +68,11 @@ func FormatImports(src []byte) ([]byte, error) {
 }
 
 func GetImportGroup(pkg string, modulePath string) ImportGroup {
-	if !strings.Contains(pkg, ".") {
-		return stdLib
-	}
 	if strings.HasPrefix(pkg, modulePath) {
 		return local
+	}
+	if !strings.Contains(pkg, ".") {
+		return stdLib
 	}
 	return thirdParty
 }

@@ -6,12 +6,7 @@ import (
 	"strings"
 )
 
-var ModulePath string
-
 func GetModulePath() string {
-	if ModulePath != "" {
-		return ModulePath
-	}
 	cmd := exec.Command("go", "list", "-m")
 	out, err := cmd.Output()
 	if err != nil {
