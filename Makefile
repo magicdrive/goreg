@@ -42,6 +42,10 @@ $(PLATFORMS):
 test:
 	@$(GO) test $(CURDIR)/...
 
+.PHONY: test-bench
+test-bench:
+	@$(GO) test $(CURDIR)/... -bench=.
+
 # Run go test with verbose output and clear test cache
 .PHONY: test-verbose
 test-verbose:
@@ -81,6 +85,7 @@ help:
 	@echo "  make release-build     - Build artifacts for multiple platforms with version info"
 	@echo "  make install           - Install application. Use `go install`"
 	@echo "  make test              - Run go test"
+	@echo "  make test-bench      - Run go test ./... bench=."
 	@echo "  make test-verbose      - Run go test -v with go clean -testcache"
 	@echo "  make clean             - Remove build artifacts"
 	@echo "  make publish tag=<tag> - Publish to github.com"

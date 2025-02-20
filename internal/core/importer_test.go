@@ -191,6 +191,7 @@ import (
 			expected: `package main
 
 import (
+	/* Standard lib */
 	"fmt"
 
 	"github.com/pkg/errors" // Error handling
