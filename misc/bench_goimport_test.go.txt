@@ -1,0 +1,36 @@
+package core_test
+
+import (
+	"bytes"
+	"os"
+	"os/exec"
+	"testing"
+)
+
+
+func BenchmarkGoImports(b *testing.B) {
+	tmpFile, err := os.CreateTemp("", "bench_goimports_*.go")
+	if err != nil {
+		b.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write(sampleGoCode); err != nil {
+		b.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cmd := exec.Command("goreg", "-w", tmpFile.Name())
+		cmd.Stdout = &bytes.Buffer{}
+		cmd.Stderr = &bytes.Buffer{}
+		if err := cmd.Run(); err != nil {
+			b.Fatalf("goimports failed: %v", err)
+		}
+
+		if err := os.WriteFile(tmpFile.Name(), sampleGoCode, 0644); err != nil {
+			b.Fatalf("Failed to reset temp file: %v", err)
+		}
+	}
+}

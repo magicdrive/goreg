@@ -12,7 +12,7 @@ import (
 
 func FormatImports(src []byte, modulePath string) ([]byte, error) {
 	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "", src, parser.AllErrors|parser.ParseComments)
+	node, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func IsCommentBeforeImport(imp *ast.ImportSpec, comment *ast.Comment) bool {
 
 func ReplaceImports(src []byte, newImports string) []byte {
 	srcStr := string(src)
-	start := strings.Index(srcStr, "import (")
+	start := bytes.Index(src, []byte("import ("))
 	if start == -1 {
 		return src
 	}
