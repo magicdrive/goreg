@@ -117,7 +117,7 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, imports
 			buf.WriteString(fmt.Sprintf("\t%s\n", c))
 		}
 
-		if importPack.LineComment != nil && IsCommentBeforeImport(fset, importPack.Entity, importPack.LineComment) {
+		if importPack.LineComment != nil && IsCommentBeforeImport(importPack.Entity, importPack.LineComment) {
 			buf.WriteString(fmt.Sprintf("\t%s\n", importPack.LineComment.Text))
 		}
 
@@ -175,7 +175,7 @@ func ExtractLineComments(node *ast.File, fset *token.FileSet) map[int]*ast.Comme
 	return precedingComments
 }
 
-func IsCommentBeforeImport(fset *token.FileSet, imp *ast.ImportSpec, comment *ast.Comment) bool {
+func IsCommentBeforeImport(imp *ast.ImportSpec, comment *ast.Comment) bool {
 	return comment.Pos() < imp.Pos()
 }
 
@@ -204,8 +204,11 @@ func ReplaceImports(src []byte, newImports string) []byte {
 	}
 
 replace:
-	if end < len(srcStr) && srcStr[end] == '\n' {
-		end++
-	}
-	return append([]byte(srcStr[:start]), append([]byte(newImports), srcStr[end:]...)...)
+	var builder strings.Builder
+	builder.Grow(len(srcStr) + len(newImports))
+	builder.WriteString(srcStr[:start])
+	builder.WriteString(newImports)
+	builder.WriteString(srcStr[end:])
+
+	return []byte(builder.String())
 }
