@@ -1,5 +1,7 @@
 package core
 
+import "go/ast"
+
 type ImportGroup int
 
 const (
@@ -8,8 +10,10 @@ const (
 	local
 )
 
-type ImportBlock struct {
-	Doc   []string
-	End   string
-	Alias string
+type ImportPack struct {
+	Entity      *ast.ImportSpec
+	LineComment *ast.Comment
+	Doc         []string
+	End         string
+	Alias       string
 }
