@@ -203,7 +203,6 @@ func ReplaceImports(src []byte, newImports string) []byte {
 		}
 	}
 
-
 replace:
 	if end < len(srcStr) && srcStr[end] == '\n' {
 		end++
@@ -214,7 +213,6 @@ replace:
 	builder.WriteString(srcStr[:start])
 	builder.WriteString(newImports)
 	builder.WriteString(srcStr[end:])
-	builder.WriteString("\n")
 
 	return []byte(builder.String())
 }

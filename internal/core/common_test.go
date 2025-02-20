@@ -91,4 +91,3 @@ func TestGetModulePath(t *testing.T) {
 func writeGoMod(dir, content string) {
 	_ = os.WriteFile(filepath.Join(dir, "go.mod"), []byte(content), 0644)
 }
-
