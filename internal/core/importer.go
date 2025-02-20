@@ -20,20 +20,19 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 	importsMap := make(map[string]ImportPack)
 	var stdLibImports, thirdPartyImports, localImports []string
 
-	LineComments := ExtractLineComments(node, fset)
+	lineComments := ExtractLineComments(node, fset)
 
 	for _, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
 		group := GetImportGroup(path, modulePath)
 
 		docComments, endComment, moduleAlias := ExtractComments(imp)
-
 		line := fset.Position(imp.Pos()).Line
-		preComment := LineComments[line]
+		lineComment := lineComments[line]
 
 		importsMap[path] = ImportPack{
 			Entity:      imp,
-			LineComment: preComment,
+			LineComment: lineComment,
 			Doc:         docComments,
 			End:         endComment,
 			Alias:       moduleAlias,
@@ -73,7 +72,6 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 	}
 
 	buf.WriteString(")\n")
-
 	return ReplaceImports(src, buf.String()), nil
 }
 
@@ -89,14 +87,14 @@ func GetImportGroup(pkg string, modulePath string) ImportGroup {
 
 func sortImports(imports []string, importsMap map[string]ImportPack) {
 	sort.SliceStable(imports, func(i, j int) bool {
-		aliasI := importsMap[imports[i]].Alias
-		aliasJ := importsMap[imports[j]].Alias
+		iData, jData := importsMap[imports[i]], importsMap[imports[j]]
+		iAlias, jAlias := iData.Alias != "", jData.Alias != ""
 
-		if aliasI == "" && aliasJ != "" {
-			return true
-		}
-		if aliasI != "" && aliasJ == "" {
+		if iAlias && !jAlias {
 			return false
+		}
+		if !iAlias && jAlias {
+			return true
 		}
 		return imports[i] < imports[j]
 	})
@@ -108,11 +106,7 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, imports
 	isNoneAliasImportExist := false
 
 	for _, imp := range pkgs {
-		importPack, exists := importsMap[imp]
-		if !exists {
-			fmt.Fprintf(buf, "\t\"%s\"\n", imp)
-			continue
-		}
+		importPack := importsMap[imp]
 
 		if !isFirstImport && len(importPack.Doc) > 0 {
 			buf.WriteString("\n")
@@ -123,10 +117,8 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, imports
 			buf.WriteString(fmt.Sprintf("\t%s\n", c))
 		}
 
-		if importPack.LineComment != nil {
-			if IsCommentBeforeImport(fset, importPack.Entity, importPack.LineComment) {
-				buf.WriteString(fmt.Sprintf("\t%s\n", importPack.LineComment.Text))
-			}
+		if importPack.LineComment != nil && IsCommentBeforeImport(fset, importPack.Entity, importPack.LineComment) {
+			buf.WriteString(fmt.Sprintf("\t%s\n", importPack.LineComment.Text))
 		}
 
 		if importPack.Alias != "" {
@@ -153,10 +145,9 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, imports
 
 func ExtractComments(imp *ast.ImportSpec) ([]string, string, string) {
 	var docComments []string
-	var endComment string
-	var alias string = ""
+	var endComment, alias string
 
-	if imp.Doc != nil {
+	if imp.Doc != nil && len(imp.Doc.List) > 0 {
 		for _, c := range imp.Doc.List {
 			docComments = append(docComments, c.Text)
 		}
@@ -164,7 +155,6 @@ func ExtractComments(imp *ast.ImportSpec) ([]string, string, string) {
 	if imp.Comment != nil && len(imp.Comment.List) > 0 {
 		endComment = strings.TrimSpace(imp.Comment.List[0].Text)
 	}
-
 	if imp.Name != nil {
 		alias = imp.Name.Name
 	}
@@ -186,11 +176,7 @@ func ExtractLineComments(node *ast.File, fset *token.FileSet) map[int]*ast.Comme
 }
 
 func IsCommentBeforeImport(fset *token.FileSet, imp *ast.ImportSpec, comment *ast.Comment) bool {
-	commentPos := fset.Position(comment.Pos()).Offset
-
-	importPos := fset.Position(imp.Pos()).Offset
-
-	return commentPos < importPos
+	return comment.Pos() < imp.Pos()
 }
 
 func ReplaceImports(src []byte, newImports string) []byte {
@@ -202,21 +188,24 @@ func ReplaceImports(src []byte, newImports string) []byte {
 
 	end := start
 	bracketCount := 1
-	for i := start + len("import ("); i < len(srcStr); i++ {
-		if srcStr[i] == '(' {
+
+	// len("import (") is 8
+	for i := start + 8; i < len(srcStr); i++ {
+		switch srcStr[i] {
+		case '(':
 			bracketCount++
-		} else if srcStr[i] == ')' {
+		case ')':
 			bracketCount--
 			if bracketCount == 0 {
 				end = i + 1
-				break
+				goto replace
 			}
 		}
 	}
 
+replace:
 	if end < len(srcStr) && srcStr[end] == '\n' {
 		end++
 	}
-
-	return []byte(srcStr[:start] + newImports + srcStr[end:])
+	return append([]byte(srcStr[:start]), append([]byte(newImports), srcStr[end:]...)...)
 }
