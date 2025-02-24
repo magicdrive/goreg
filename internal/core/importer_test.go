@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/magicdrive/goreg/internal/commandline"
 	"github.com/magicdrive/goreg/internal/core"
+	"github.com/magicdrive/goreg/internal/model"
 )
 
 func TestFormatImports(t *testing.T) {
@@ -225,9 +227,22 @@ import (
 		},
 	}
 
+	opt := &commandline.Option{
+		ImportOrder:          model.DefaultOrder,
+		OrganizationName:     "",
+		MinimizeGroupFlag:    false,
+		SortIncludeAliasFlag: false,
+		WriteFlag:            false,
+		HelpFlag:             false,
+		VersionFlag:          false,
+		ModulePath:           "myproject/module",
+		FileName:             "",
+		FlagSet:              nil,
+	}
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := core.FormatImports([]byte(tc.input), "myproject/module")
+			output, err := core.FormatImports([]byte(tc.input), opt)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("unexpected error status: %v", err)
 			}

@@ -2,7 +2,7 @@ package main
 
 import (
 	/*fmtdayo*/
-	"fmt"
+	fmt "fmt"
 	"log"
 
 	//hogehogeho

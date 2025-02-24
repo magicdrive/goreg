@@ -4,9 +4,13 @@ import (
 	"os"
 
 	"golang.org/x/tools/imports"
+
+	"github.com/magicdrive/goreg/internal/commandline"
 )
 
-func Apply(filename string, _modulePath string, writeToFile bool) error {
+func Apply(opt *commandline.Option) error {
+	filename := opt.FileName
+
 	src, err := os.ReadFile(filename)
 	if err != nil {
 		return err
@@ -20,12 +24,12 @@ func Apply(filename string, _modulePath string, writeToFile bool) error {
 		return err
 	}
 
-	sorted, err := FormatImports(formatted, _modulePath)
+	sorted, err := FormatImports(formatted, opt)
 	if err != nil {
 		return err
 	}
 
-	if writeToFile {
+	if opt.WriteFlag {
 		return os.WriteFile(filename, sorted, 0644)
 	} else {
 		_, err := os.Stdout.Write(sorted)
