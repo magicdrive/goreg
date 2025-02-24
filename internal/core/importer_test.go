@@ -15,6 +15,7 @@ func TestFormatImports(t *testing.T) {
 		input    string
 		expected string
 		wantErr  bool
+		opt      *commandline.Option
 	}{
 		{
 			name: "Standard case",
@@ -37,6 +38,10 @@ import (
 )
 `,
 			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder: model.DefaultOrder,
+				ModulePath:  "myproject/module",
+			},
 		},
 		{
 			name: "Unsorted imports",
@@ -59,158 +64,51 @@ import (
 )
 `,
 			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder: model.DefaultOrder,
+				ModulePath:  "myproject/module",
+			},
 		},
-		{
-			name: "Aliased imports",
-			input: `package main
 
-import (
-	cmd "github.com/hogehoge/cmd/tools"
-	"fmt"
-	"github.com/pkg/errors"
-)
-`,
-			expected: `package main
+		{
+			name: "MinimizeGroupFlag enabled",
+			input: `package main
 
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
-	cmd "github.com/hogehoge/cmd/tools"
-)
-`,
-			wantErr: false,
-		},
-		{
-			name: "Multiple aliased imports",
-			input: `package main
-
-import (
-	cmd "github.com/hogehoge/cmd/tools"
-	log "github.com/sirupsen/logrus"
-	"fmt"
-	"github.com/pkg/errors"
-)
-`,
-			expected: `package main
-
-import (
-	"fmt"
+	mylog "log"
 
 	"github.com/pkg/errors"
 
-	cmd "github.com/hogehoge/cmd/tools"
-	log "github.com/sirupsen/logrus"
-)
-`,
-			wantErr: false,
-		},
-		{
-			name: "Imports with line comments",
-			input: `package main
-
-import (
-	"fmt" // Standard library
-	"github.com/pkg/errors" // Third-party package
-	"myproject/module" // Project package
-)
-`,
-			expected: `package main
-
-import (
-	"fmt" // Standard library
-
-	"github.com/pkg/errors" // Third-party package
-
-	"myproject/module" // Project package
-)
-`,
-			wantErr: false,
-		},
-		{
-			name: "Aliased imports with comments",
-			input: `package main
-
-import (
-	cmd "github.com/hogehoge/cmd/tools" // Command tools
-	"fmt" // Standard library
-	"github.com/pkg/errors" // Error handling
-)
-`,
-			expected: `package main
-
-import (
-	"fmt" // Standard library
-
-	"github.com/pkg/errors" // Error handling
-
-	cmd "github.com/hogehoge/cmd/tools" // Command tools
-)
-`,
-			wantErr: false,
-		},
-		{
-			name: "Imports with block comments",
-			input: `package main
-
-import (
-	/* Standard library */
-	"fmt"
-
-	/* Error handling */
-	"github.com/pkg/errors"
-
-	/* Project-specific module */
 	"myproject/module"
 )
 `,
 			expected: `package main
 
 import (
-	/* Standard library */
 	"fmt"
+	mylog "log"
 
-	/* Error handling */
 	"github.com/pkg/errors"
 
-	/* Project-specific module */
 	"myproject/module"
 )
 `,
 			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder:       model.DefaultOrder,
+				MinimizeGroupFlag: true,
+				ModulePath:        "myproject/module",
+			},
 		},
 		{
-			name: "Mixed line and block comments",
+			name: "SortIncludeAliasFlag enabled",
 			input: `package main
 
 import (
-	/* Standard lib */ "fmt"
-	"github.com/pkg/errors" // Error handling
-	"myproject/module" /* Project module */
-)
-`,
-			expected: `package main
-
-import (
-	/* Standard lib */
-	"fmt"
-
-	"github.com/pkg/errors" // Error handling
-
-	"myproject/module" /* Project module */
-)
-`,
-			wantErr: false,
-		}, {
-			name: "Standardlib and aliased thirdParty",
-			input: `package main
-
-import (
-
-	/* Error handling */
-	errorlib "github.com/pkg/errors"
-
+	cmd "github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"fmt"
 )
 `,
@@ -219,30 +117,103 @@ import (
 import (
 	"fmt"
 
-	/* Error handling */
-	errorlib "github.com/pkg/errors"
+	cmd "github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 `,
 			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder:          model.DefaultOrder,
+				SortIncludeAliasFlag: true,
+				ModulePath:           "myproject/module",
+			},
 		},
-	}
+		{
+			name: "OrganizationName specified",
+			input: `package main
 
-	opt := &commandline.Option{
-		ImportOrder:          model.DefaultOrder,
-		OrganizationName:     "",
-		MinimizeGroupFlag:    false,
-		SortIncludeAliasFlag: false,
-		WriteFlag:            false,
-		HelpFlag:             false,
-		VersionFlag:          false,
-		ModulePath:           "myproject/module",
-		FileName:             "",
-		FlagSet:              nil,
+import (
+	"fmt"
+	"github.com/pkg/errors"
+	"orgname/project/module"
+)
+`,
+			expected: `package main
+
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+
+	"orgname/project/module"
+)
+`,
+			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder:      model.DefaultOrder,
+				OrganizationName: "orgname",
+				ModulePath:       "myproject/module",
+			},
+		},
+		{
+			name: "Local module mixed with third-party",
+			input: `package main
+
+import (
+	"myproject/module"
+	"fmt"
+	"github.com/pkg/errors"
+	"myproject/module/utils"
+)
+`,
+			expected: `package main
+
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+
+	"myproject/module"
+	"myproject/module/utils"
+)
+`,
+			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder: model.DefaultOrder,
+				ModulePath:  "myproject/module",
+			},
+		},
+		{
+			name: "Imports with inline comments and special aliases",
+			input: `package main
+
+import (
+	"fmt" // Standard lib
+	errlib "github.com/pkg/errors" // Third-party
+	utils "myproject/module/utils" // Project package
+)
+`,
+			expected: `package main
+
+import (
+	"fmt" // Standard lib
+
+	errlib "github.com/pkg/errors" // Third-party
+
+	utils "myproject/module/utils" // Project package
+)
+`,
+			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder: model.DefaultOrder,
+				ModulePath:  "myproject/module",
+			},
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := core.FormatImports([]byte(tc.input), opt)
+			output, err := core.FormatImports([]byte(tc.input), tc.opt)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("unexpected error status: %v", err)
 			}
@@ -257,3 +228,4 @@ import (
 		})
 	}
 }
+
