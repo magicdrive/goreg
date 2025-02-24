@@ -32,8 +32,8 @@ func OptParse(args []string) (int, *Option, error) {
 	fs.BoolVar(minimizeGroupOpt, "m", false, "Not separate module group by alias.")
 
 	// --sort-include-aliases
-	sortIncludeAliasOpt := fs.Bool("sort-include-alias", false, "foobar")
-	fs.BoolVar(sortIncludeAliasOpt, "a", false, "foobar")
+	sortIncludeAliasOpt := fs.Bool("sort-include-alias", false, "Imports with aliases will also be sorted within the group.")
+	fs.BoolVar(sortIncludeAliasOpt, "a", false, "Imports with aliases will also be sorted within the group.")
 
 	// --local
 	modulePathOpt := fs.String("local", "", "Specify local modulepath.")

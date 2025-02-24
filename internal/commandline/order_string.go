@@ -8,8 +8,8 @@ import (
 )
 
 var wordMap = map[string]model.ImportGroup{
-	"stdlib":       model.StdLib,
 	"std":          model.StdLib,
+	"stdlib":       model.StdLib,
 	"s":            model.StdLib,
 	"thirdparty":   model.ThirdParty,
 	"third_party":  model.ThirdParty,
