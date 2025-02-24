@@ -1,12 +1,20 @@
 package commandline
 
-import "flag"
+import (
+	"flag"
+
+	"github.com/magicdrive/goreg/internal/model"
+)
 
 type Option struct {
-	WriteFlag   bool
-	HelpFlag    bool
-	VersionFlag bool
-	FileName    string
-	ModulePath  string
-	FlagSet     *flag.FlagSet
+	ImportOrder          []model.ImportGroup
+	OrganizationName     string
+	MinimizeGroupFlag    bool
+	SortIncludeAliasFlag bool
+	WriteFlag            bool
+	HelpFlag             bool
+	VersionFlag          bool
+	FileName             string
+	ModulePath           string
+	FlagSet              *flag.FlagSet
 }

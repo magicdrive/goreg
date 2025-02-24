@@ -6,6 +6,8 @@ import (
 	"os"
 
 	_ "embed"
+
+	"github.com/magicdrive/goreg/internal/model"
 )
 
 //go:embed help.txt
@@ -17,6 +19,23 @@ func OptParse(args []string) (int, *Option, error) {
 
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
 
+	// --order
+	orderOpt := fs.String("order", "", "Specify module group order.")
+	fs.StringVar(orderOpt, "o", "", "Specify module group order.")
+
+	// --organization
+	organizationOpt := fs.String("organization", "", "Specify organization modulepath.")
+	fs.StringVar(organizationOpt, "n", "", "Specify organization modulepath.")
+
+	// --minimize-group
+	minimizeGroupOpt := fs.Bool("minimize-group", false, "Not separate module group by alias.")
+	fs.BoolVar(minimizeGroupOpt, "m", false, "Not separate module group by alias.")
+
+	// --sort-include-aliases
+	sortIncludeAliasOpt := fs.Bool("sort-include-alias", false, "Imports with aliases will also be sorted within the group.")
+	fs.BoolVar(sortIncludeAliasOpt, "a", false, "Imports with aliases will also be sorted within the group.")
+
+	// --local
 	modulePathOpt := fs.String("local", "", "Specify local modulepath.")
 	fs.StringVar(modulePathOpt, "l", "", "Specify local modulepath.")
 
@@ -47,14 +66,29 @@ func OptParse(args []string) (int, *Option, error) {
 		filename = _args[0]
 	}
 
-	result := &Option{
-		WriteFlag:   *writeFlagOpt,
-		HelpFlag:    *helpFlagOpt,
-		VersionFlag: *versionFlagOpt,
-		ModulePath:  *modulePathOpt,
-		FileName:    filename,
-		FlagSet:     fs,
+	var _importOrder []model.ImportGroup
+	if *orderOpt == "" {
+		_importOrder = model.DefaultOrder
+	} else {
+		_importOrder, err = GenerateOrderStrings(*orderOpt)
+		if err != nil {
+			return optLength, nil, err
+		}
 	}
+
+	result := &Option{
+		ImportOrder:          _importOrder,
+		OrganizationName:     *organizationOpt,
+		MinimizeGroupFlag:    *minimizeGroupOpt,
+		SortIncludeAliasFlag: *sortIncludeAliasOpt,
+		WriteFlag:            *writeFlagOpt,
+		HelpFlag:             *helpFlagOpt,
+		VersionFlag:          *versionFlagOpt,
+		ModulePath:           *modulePathOpt,
+		FileName:             filename,
+		FlagSet:              fs,
+	}
+
 	OverRideHelp(fs)
 
 	return optLength, result, nil

@@ -8,29 +8,37 @@ import (
 	"go/token"
 	"sort"
 	"strings"
+
+	"github.com/magicdrive/goreg/internal/commandline"
+	"github.com/magicdrive/goreg/internal/model"
 )
 
-func FormatImports(src []byte, modulePath string) ([]byte, error) {
+func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	importsMap := make(map[string]ImportPack)
-	var stdLibImports, thirdPartyImports, localImports []string
+	importsMap := make(map[string]model.ImportPack)
+	importGroupMap := map[model.ImportGroup][]string{
+		model.StdLib:       {},
+		model.ThirdParty:   {},
+		model.Local:        {},
+		model.Organization: {},
+	}
 
 	lineComments := ExtractLineComments(node, fset)
 
 	for _, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		group := GetImportGroup(path, modulePath)
+		group := GetImportGroup(path, opt)
 
 		docComments, endComment, moduleAlias := ExtractComments(imp)
 		line := fset.Position(imp.Pos()).Line
 		lineComment := lineComments[line]
 
-		importsMap[path] = ImportPack{
+		importsMap[path] = model.ImportPack{
 			Entity:      imp,
 			LineComment: lineComment,
 			Doc:         docComments,
@@ -39,91 +47,112 @@ func FormatImports(src []byte, modulePath string) ([]byte, error) {
 		}
 
 		switch group {
-		case stdLib:
-			stdLibImports = append(stdLibImports, path)
-		case thirdParty:
-			thirdPartyImports = append(thirdPartyImports, path)
-		case local:
-			localImports = append(localImports, path)
+		case model.StdLib:
+			importGroupMap[model.StdLib] = append(importGroupMap[model.StdLib], path)
+		case model.ThirdParty:
+			importGroupMap[model.ThirdParty] = append(importGroupMap[model.ThirdParty], path)
+		case model.Local:
+			importGroupMap[model.Local] = append(importGroupMap[model.Local], path)
+		case model.Organization:
+			importGroupMap[model.Organization] = append(importGroupMap[model.Organization], path)
 		}
 	}
 
-	sortImports(stdLibImports, importsMap)
-	sortImports(thirdPartyImports, importsMap)
-	sortImports(localImports, importsMap)
+	sortImports(importGroupMap[model.StdLib], importsMap, opt)
+	sortImports(importGroupMap[model.ThirdParty], importsMap, opt)
+	sortImports(importGroupMap[model.Local], importsMap, opt)
+	sortImports(importGroupMap[model.Organization], importsMap, opt)
 
 	var buf bytes.Buffer
 	buf.WriteString("import (\n")
 
 	groups := [][]string{}
-	if len(stdLibImports) > 0 {
-		groups = append(groups, stdLibImports)
-	}
-	if len(thirdPartyImports) > 0 {
-		groups = append(groups, thirdPartyImports)
-	}
-	if len(localImports) > 0 {
-		groups = append(groups, localImports)
+
+	for _, elem := range opt.ImportOrder {
+		if len(importGroupMap[elem]) > 0 {
+			groups = append(groups, importGroupMap[elem])
+		}
 	}
 
 	for i, group := range groups {
 		isLastGroup := (i == len(groups)-1)
-		WriteImports(fset, &buf, group, importsMap, isLastGroup)
+		WriteImports(fset, &buf, group, importsMap, opt, isLastGroup)
 	}
 
 	buf.WriteString(")\n")
 	return ReplaceImports(src, buf.String()), nil
 }
 
-func GetImportGroup(pkg string, modulePath string) ImportGroup {
-	if strings.HasPrefix(pkg, modulePath) {
-		return local
+func GetImportGroup(pkg string, opt *commandline.Option) model.ImportGroup {
+	if strings.HasPrefix(pkg, opt.ModulePath) {
+		return model.Local
+	}
+	if opt.OrganizationName != "" && strings.HasPrefix(pkg, opt.OrganizationName) {
+		return model.Organization
 	}
 	if !strings.Contains(pkg, ".") {
-		return stdLib
+		return model.StdLib
 	}
-	return thirdParty
+	return model.ThirdParty
 }
 
-func sortImports(imports []string, importsMap map[string]ImportPack) {
-	sort.SliceStable(imports, func(i, j int) bool {
-		iData, jData := importsMap[imports[i]], importsMap[imports[j]]
-		iAlias, jAlias := iData.Alias != "", jData.Alias != ""
+func sortImports(imports []string, importsMap map[string]model.ImportPack, opt *commandline.Option) {
+	var sortArgo func(i, j int) bool
+	if opt.SortIncludeAliasFlag {
+		sortArgo = func(i, j int) bool {
+			return imports[i] < imports[j]
+		}
+	} else {
+		sortArgo = func(i, j int) bool {
+			iData, jData := importsMap[imports[i]], importsMap[imports[j]]
+			iAlias, jAlias := iData.Alias != "", jData.Alias != ""
 
-		if iAlias && !jAlias {
-			return false
+			if iAlias && !jAlias {
+				return false
+			}
+			if !iAlias && jAlias {
+				return true
+			}
+			return imports[i] < imports[j]
 		}
-		if !iAlias && jAlias {
-			return true
-		}
-		return imports[i] < imports[j]
-	})
+
+	}
+	sort.SliceStable(imports, sortArgo)
 }
 
-func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, importsMap map[string]ImportPack, isLastGroup bool) {
+func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string,
+	importsMap map[string]model.ImportPack, opt *commandline.Option, isLastGroup bool) {
 	isFirstImport := true
 	isNoneAliasImport := true
 	isNoneAliasImportExist := false
 
 	for _, imp := range pkgs {
 		importPack := importsMap[imp]
+		lineBreaked := false
 
 		if !isFirstImport && len(importPack.Doc) > 0 {
 			buf.WriteString("\n")
+			lineBreaked = true
 		}
-		isFirstImport = false
 
 		for _, c := range importPack.Doc {
 			buf.WriteString(fmt.Sprintf("\t%s\n", c))
 		}
 
 		if importPack.LineComment != nil && IsCommentBeforeImport(importPack.Entity, importPack.LineComment) {
+			if !lineBreaked && !isFirstImport {
+				buf.WriteString("\n")
+				lineBreaked = true
+			}
 			buf.WriteString(fmt.Sprintf("\t%s\n", importPack.LineComment.Text))
 		}
 
 		if importPack.Alias != "" {
-			if isNoneAliasImport && isNoneAliasImportExist {
-				buf.WriteString("\n")
+			if isNoneAliasImport && isNoneAliasImportExist && !opt.MinimizeGroupFlag {
+				if !lineBreaked {
+					buf.WriteString("\n")
+					lineBreaked = true
+				}
 				isNoneAliasImport = false
 			}
 			fmt.Fprintf(buf, "\t%s \"%s\"", importPack.Alias, imp)
@@ -136,6 +165,7 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string, imports
 			buf.WriteString(" " + importPack.End)
 		}
 		buf.WriteString("\n")
+		isFirstImport = false
 	}
 
 	if !isLastGroup {

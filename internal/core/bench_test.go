@@ -3,6 +3,7 @@ package core_test
 import (
 	"testing"
 
+	"github.com/magicdrive/goreg/internal/commandline"
 	"github.com/magicdrive/goreg/internal/core"
 )
 
@@ -21,10 +22,21 @@ func main() {
 `)
 
 func BenchmarkFormatImports(b *testing.B) {
-	modulePath := "github.com/test/project"
+	opt := &commandline.Option{
+		ImportOrder:          nil,
+		OrganizationName:     "",
+		MinimizeGroupFlag:    false,
+		SortIncludeAliasFlag: false,
+		WriteFlag:            false,
+		HelpFlag:             false,
+		VersionFlag:          false,
+		ModulePath:           "github.com/test/project",
+		FileName:             "",
+		FlagSet:              nil,
+	}
 
 	for i := 0; i < b.N; i++ {
-		_, err := core.FormatImports(sampleGoCode, modulePath)
+		_, err := core.FormatImports(sampleGoCode, opt)
 		if err != nil {
 			b.Fatalf("FormatImports failed: %v", err)
 		}
