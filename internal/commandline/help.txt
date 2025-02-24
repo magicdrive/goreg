@@ -2,17 +2,29 @@ Usage: goreg [OPTIONS] <file-name.go>
 
 Description:
    Yet another alternate `goimports` tool.
-   It arranges imports in the order of standard library, third-party libraries, and local libraries.
+   It arranges imports in the order of standard library, third-party libraries, organization modules, and local modules.
 
 Options:
-  -h, --help     Show this help message and exit
-  -v, --version  Show version.
-  -w, --write    Specify output mode. writes the results directly to the file. (optional)
-  -l, --local    Specify your local modulepath. (optional)
+  -h, --help                     Show this help message and exit.
+  -v, --version                  Show version.
+  -w, --write                    Write formatted imports directly to the file. (optional)
+  -l, --local <local_module>     Specify the local module path. (optional)
+  -o, --order <group_order>      Specify the order of import groups. (default: "std,thirdparty,organization,local")
+                                  Example: "stdlib,3rd,org,local"
+  -n, --organization <org_path>  Specify the module path of your organization. (optional)
+  -m, --minimize-group           Do not separate import groups when an alias is present. (optional)
+  -a, --sort-include-alias       Sort imports with aliases within their respective groups. (optional)
 
 Arguments:
-  <file-name.go> Target Go file to be formatted.
+  <file-name.go>                 The target Go file to be formatted.
+  <local_module>                 The local module path, typically the project's module name.
+                                  Used to determine whether an import is local. (optional)
+  <org_path>                     The organization module path. If specified, it groups imports
+                                  that start with this prefix separately. (optional)
+  <group_order>                  Defines the order in which import groups are arranged.
+                                  Must include all four: std, thirdparty, organization, and local.
+                                  Example: "stdlib,3rd,org,local"
 
 See Also:
-  https://github.com/magicdrive/goreg/README.md
+  goreg documentation: https://github.com/magicdrive/goreg/README.md
 
