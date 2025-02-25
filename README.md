@@ -37,6 +37,7 @@ goreg [OPTIONS] <file-name.go>
 | `-n`, `--organization <org_path>` | Specify the module path of your organization. If specified, it groups imports that start with this prefix separately. (optional) |
 | `-m`, `--minimize-group`          | Do not separate import groups when an alias is present. (optional) |
 | `-a`, `--sort-include-alias`      | Sort imports with aliases within their respective groups. (optional) |
+| `-r`, `--remove-import-comment`   | Remove the comments in the import. (optional) |
 
 ### Arguments
 

@@ -19,6 +19,10 @@ func OptParse(args []string) (int, *Option, error) {
 
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
 
+	// --remove-import-comment
+	removeImportCommentOpt := fs.Bool("remove-import-comment", false, "Remove the comments in the import.")
+	fs.BoolVar(removeImportCommentOpt, "r", false, "Remove the comments in the import.")
+
 	// --order
 	orderOpt := fs.String("order", "", "Specify module group order.")
 	fs.StringVar(orderOpt, "o", "", "Specify module group order.")

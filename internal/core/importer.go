@@ -28,13 +28,13 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 		model.Organization: {},
 	}
 
-	lineComments := ExtractLineComments(node, fset)
+	lineComments := ExtractLineComments(node, fset, opt)
 
 	for _, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
 		group := GetImportGroup(path, opt)
 
-		docComments, endComment, moduleAlias := ExtractComments(imp)
+		docComments, endComment, moduleAlias := ExtractComments(imp, opt)
 		line := fset.Position(imp.Pos()).Line
 		lineComment := lineComments[line]
 
@@ -173,16 +173,16 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string,
 	}
 }
 
-func ExtractComments(imp *ast.ImportSpec) ([]string, string, string) {
+func ExtractComments(imp *ast.ImportSpec, opt *commandline.Option) ([]string, string, string) {
 	var docComments []string
 	var endComment, alias string
 
-	if imp.Doc != nil && len(imp.Doc.List) > 0 {
+	if imp.Doc != nil && len(imp.Doc.List) > 0 && !opt.RemoveImportCommentFlag {
 		for _, c := range imp.Doc.List {
 			docComments = append(docComments, c.Text)
 		}
 	}
-	if imp.Comment != nil && len(imp.Comment.List) > 0 {
+	if imp.Comment != nil && len(imp.Comment.List) > 0 && !opt.RemoveImportCommentFlag {
 		endComment = strings.TrimSpace(imp.Comment.List[0].Text)
 	}
 	if imp.Name != nil {
@@ -192,7 +192,12 @@ func ExtractComments(imp *ast.ImportSpec) ([]string, string, string) {
 	return docComments, endComment, alias
 }
 
-func ExtractLineComments(node *ast.File, fset *token.FileSet) map[int]*ast.Comment {
+func ExtractLineComments(node *ast.File, fset *token.FileSet, opt *commandline.Option) map[int]*ast.Comment {
+
+	if opt.RemoveImportCommentFlag {
+		return map[int]*ast.Comment{}
+	}
+
 	precedingComments := make(map[int]*ast.Comment)
 
 	for _, commentGroup := range node.Comments {
