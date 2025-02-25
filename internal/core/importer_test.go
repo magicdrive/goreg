@@ -209,6 +209,33 @@ import (
 				ModulePath:  "myproject/module",
 			},
 		},
+		{
+			name: "Imports with inline comments and special aliases",
+			input: `package main
+
+import (
+	"fmt" // Standard lib
+	errlib "github.com/pkg/errors" // Third-party
+	utils "myproject/module/utils" // Project package
+)
+`,
+			expected: `package main
+
+import (
+	"fmt"
+
+	errlib "github.com/pkg/errors"
+
+	utils "myproject/module/utils"
+)
+`,
+			wantErr: false,
+			opt: &commandline.Option{
+				ImportOrder: model.DefaultOrder,
+				ModulePath:  "myproject/module",
+				RemoveImportCommentFlag:  true,
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -1,0 +1,16 @@
+registries:
+  - type: standard
+    ref: v4.0.0
+
+packages:
+  - name: local/goreg
+    type: github_release
+    repo_owner: magicdrive
+    repo_name: goreg
+    description: "A tool to organize Go imports based on goimports"
+    version: v0.0.8
+    asset: goreg_linux_amd64.tar.gz
+    files:
+      - name: goreg
+        src: goreg
+

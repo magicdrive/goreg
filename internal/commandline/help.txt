@@ -9,11 +9,12 @@ Options:
   -v, --version                  Show version.
   -w, --write                    Write formatted imports directly to the file. (optional)
   -l, --local <local_module>     Specify the local module path. (optional)
-  -o, --order <group_order>      Specify the order of import groups. (default: "std,thirdparty,organization,local")
+  -o, --order <group_order>      Specify the order of import groups. (default: "std,thirdparty,organization,local") (optional)
                                   Example: "stdlib,3rd,org,local"
   -n, --organization <org_path>  Specify the module path of your organization. (optional)
   -m, --minimize-group           Do not separate import groups when an alias is present. (optional)
   -a, --sort-include-alias       Sort imports with aliases within their respective groups. (optional)
+  -r, --remove-import-comment    Remove the comments in the import. (optional)
 
 Arguments:
   <file-name.go>                 The target Go file to be formatted.
