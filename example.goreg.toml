@@ -1,0 +1,15 @@
+# goreg.toml
+
+[general]
+write = false
+
+[import]
+local_module = "myproject"
+organization_module = "github.com/myorg"
+order = "std,thirdparty,organization,local"
+
+[format]
+minimize_group = false
+sort_include_alias = false
+remove_import_comment = false
+
