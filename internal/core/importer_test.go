@@ -231,9 +231,9 @@ import (
 `,
 			wantErr: false,
 			opt: &commandline.Option{
-				ImportOrder: model.DefaultOrder,
-				ModulePath:  "myproject/module",
-				RemoveImportCommentFlag:  true,
+				ImportOrder:             model.DefaultOrder,
+				ModulePath:              "myproject/module",
+				RemoveImportCommentFlag: true,
 			},
 		},
 	}
@@ -255,4 +255,3 @@ import (
 		})
 	}
 }
-

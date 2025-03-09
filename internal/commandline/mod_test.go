@@ -83,7 +83,7 @@ func TestOptParse(t *testing.T) {
 			name: "Specify order",
 			args: []string{"--order", "std,local,thirdparty,organization"},
 			expected: &commandline.Option{
-				ImportOrder:          []model.ImportGroup{model.StdLib,model.Local,model.ThirdParty,model.Organization},
+				ImportOrder:          []model.ImportGroup{model.StdLib, model.Local, model.ThirdParty, model.Organization},
 				OrganizationName:     "",
 				MinimizeGroupFlag:    false,
 				SortIncludeAliasFlag: false,
@@ -99,7 +99,7 @@ func TestOptParse(t *testing.T) {
 			name: "Short flag for order",
 			args: []string{"-o", "std,local,thirdparty,organization"},
 			expected: &commandline.Option{
-				ImportOrder:          []model.ImportGroup{model.StdLib,model.Local,model.ThirdParty,model.Organization},
+				ImportOrder:          []model.ImportGroup{model.StdLib, model.Local, model.ThirdParty, model.Organization},
 				OrganizationName:     "",
 				MinimizeGroupFlag:    false,
 				SortIncludeAliasFlag: false,
@@ -112,10 +112,10 @@ func TestOptParse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Error order",
-			args: []string{"--order", "std,local,organization"},
+			name:     "Error order",
+			args:     []string{"--order", "std,local,organization"},
 			expected: nil,
-			wantErr: true,
+			wantErr:  true,
 		},
 		{
 			name: "Specify order other name 1.",
