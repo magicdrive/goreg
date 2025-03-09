@@ -11,6 +11,11 @@ import (
 )
 
 func FindGoregToml() (string, error) {
+
+	if notUseflg := os.Getenv("GOREG_NOT_USE_CONFIGFILE"); notUseflg != "" {
+		return "", errors.New("specified env GOREG_NOT_USE_CONFIGFILE.")
+	}
+
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err

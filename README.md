@@ -48,6 +48,12 @@ goreg [OPTIONS] <file-name.go>
 | `<org_path>`     | The organization module path. If specified, it groups imports that start with this prefix separately. (optional) |
 | `<group_order>`  | Defines the order in which import groups are arranged. Must include all four: `std`, `thirdparty`, `organization`, and `local`. Example: `"stdlib,3rd,org,local"` |
 
+### Enviroments
+
+| Enviroment                 | Description |
+|----------------------------|-------------|
+| `GOREG_NOT_USE_CONFIGFILE` | if anything other than `""` is set, goreg.toml will not be searched for. |
+
 ## Configuration
 
 goreg supports configuration via a `goreg.toml` file. This allows users to define default options instead of specifying them via CLI arguments every time.

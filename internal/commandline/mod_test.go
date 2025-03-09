@@ -1,6 +1,7 @@
 package commandline_test
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -295,6 +296,9 @@ func TestOptParse(t *testing.T) {
 		},
 	}
 
+	os.Setenv("GOREG_NOT_USE_CONFIGFILE", "1")
+	defer os.Setenv("GOREG_NOT_USE_CONFIGFILE", "")
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, got, err := commandline.OptParse(tt.args)
@@ -309,7 +313,7 @@ func TestOptParse(t *testing.T) {
 					t.Errorf("ImportOrder mismatch: got %v, want %v", got.ImportOrder, tt.expected.ImportOrder)
 				}
 
-				got.FlagSet = nil // 比較不要なフィールドを無視
+				got.FlagSet = nil
 				if !reflect.DeepEqual(got, tt.expected) {
 					t.Errorf("expected %+v, got %+v", tt.expected, got)
 				}
