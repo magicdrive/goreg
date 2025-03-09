@@ -7,6 +7,7 @@ import (
 
 	_ "embed"
 
+	"github.com/magicdrive/goreg/internal/common"
 	"github.com/magicdrive/goreg/internal/model"
 )
 
@@ -17,31 +18,44 @@ func OptParse(args []string) (int, *Option, error) {
 
 	optLength := len(args)
 
+	cfg, _ := common.LoadConfig()
+
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
 
-	// --remove-import-comment
-	removeImportCommentOpt := fs.Bool("remove-import-comment", false, "Remove the comments in the import.")
-	fs.BoolVar(removeImportCommentOpt, "r", false, "Remove the comments in the import.")
+	/* ------------------ */
+	/* cfg Import section */
+	/* ------------------ */
 
 	// --order
-	orderOpt := fs.String("order", "", "Specify module group order.")
-	fs.StringVar(orderOpt, "o", "", "Specify module group order.")
+	orderOpt := fs.String("order", cfg.Import.Order, "Specify module group order.")
+	fs.StringVar(orderOpt, "o", cfg.Import.Order, "Specify module group order.")
 
 	// --organization
-	organizationOpt := fs.String("organization", "", "Specify organization modulepath.")
-	fs.StringVar(organizationOpt, "n", "", "Specify organization modulepath.")
-
-	// --minimize-group
-	minimizeGroupOpt := fs.Bool("minimize-group", false, "Not separate module group by alias.")
-	fs.BoolVar(minimizeGroupOpt, "m", false, "Not separate module group by alias.")
-
-	// --sort-include-aliases
-	sortIncludeAliasOpt := fs.Bool("sort-include-alias", false, "Imports with aliases will also be sorted within the group.")
-	fs.BoolVar(sortIncludeAliasOpt, "a", false, "Imports with aliases will also be sorted within the group.")
+	organizationOpt := fs.String("organization", cfg.Import.OrganizationModule, "Specify organization modulepath.")
+	fs.StringVar(organizationOpt, "n", cfg.Import.OrganizationModule, "Specify organization modulepath.")
 
 	// --local
-	modulePathOpt := fs.String("local", "", "Specify local modulepath.")
-	fs.StringVar(modulePathOpt, "l", "", "Specify local modulepath.")
+	modulePathOpt := fs.String("local", cfg.Import.LocalModule, "Specify local modulepath.")
+	fs.StringVar(modulePathOpt, "l", cfg.Import.LocalModule, "Specify local modulepath.")
+
+	/* ------------------ */
+	/* cfg Format section */
+	/* ------------------ */
+
+	// --minimize-group
+	minimizeGroupOpt := fs.Bool("minimize-group", cfg.Format.MinimizeGroup, "Not separate module group by alias.")
+	fs.BoolVar(minimizeGroupOpt, "m", cfg.Format.MinimizeGroup, "Not separate module group by alias.")
+
+	// --sort-include-aliases
+	sortIncludeAliasOpt := fs.Bool("sort-include-alias",
+		cfg.Format.SortIncludeAlias, "Imports with aliases will also be sorted within the group.")
+	fs.BoolVar(sortIncludeAliasOpt, "a", cfg.Format.SortIncludeAlias,
+		"Imports with aliases will also be sorted within the group.")
+
+	// --remove-import-comment
+	removeImportCommentOpt := fs.Bool("remove-import-comment",
+		cfg.Format.RemoveImportComment, "Remove the comments in the import.")
+	fs.BoolVar(removeImportCommentOpt, "r", cfg.Format.RemoveImportComment, "Remove the comments in the import.")
 
 	// --write
 	writeFlagOpt := fs.Bool("write", false, "Show help message.")

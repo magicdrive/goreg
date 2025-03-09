@@ -21,5 +21,4 @@ func Version() string {
 		return buildInfo.Main.Version
 	}
 	return "unknown"
-
 }

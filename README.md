@@ -48,6 +48,33 @@ goreg [OPTIONS] <file-name.go>
 | `<org_path>`     | The organization module path. If specified, it groups imports that start with this prefix separately. (optional) |
 | `<group_order>`  | Defines the order in which import groups are arranged. Must include all four: `std`, `thirdparty`, `organization`, and `local`. Example: `"stdlib,3rd,org,local"` |
 
+## Configuration
+
+goreg supports configuration via a `goreg.toml` file. This allows users to define default options instead of specifying them via CLI arguments every time.
+
+### Example `goreg.toml`
+
+```toml
+[general]
+write = false  # Whether to write the formatted output to the file.
+
+[import]
+local_module = "myproject"  # Defines the local module path. If blank, it will be automatically guessed.
+organization_module = "github.com/myorg"  # Defines the organization's module path.
+order = "std,thirdparty,organization,local"  # Specifies the order of import groups.
+
+[format]
+minimize_group = false  # Do not separate import groups when an alias is present.
+sort_include_alias = false  # Sort imports with aliases within their respective groups.
+remove_import_comment = false  # Remove comments in the import.
+```
+
+### Using `goreg.toml`
+
+goreg will automatically search for `goreg.toml` in the current directory and its parent directories. If no configuration file is found, it will check `~/.config/goreg/goreg.toml` as a fallback.
+
+To override settings from the configuration file, you can specify options via CLI arguments.
+
 ## Examples
 
 ### Format a Go file and print to stdout
@@ -86,3 +113,5 @@ goreg -a file.go
 
 ## License
 This project is licensed under the [MIT License](https://github.com/magicdrive/goreg/LICENSE).
+
+
