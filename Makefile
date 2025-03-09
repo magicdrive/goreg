@@ -72,7 +72,7 @@ publish:
 		echo ; \
 		echo ; \
 		exit 1; \
-		fi
+	fi
 	git tag $(tag)
 	git push origin $(tag)
 
