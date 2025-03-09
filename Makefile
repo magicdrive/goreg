@@ -63,6 +63,11 @@ install:
 clean:
 	@rm -rf $(BUILD_DIR)
 
+# Execute goreg -w to entire gofile.
+.PHONY: goreg
+goreg:
+	git ls-files | grep -e '.go$$' | xargs -I GOFILE goreg -w GOFILE
+
 # Publish to github.com
 .PHONY: publish
 publish:
@@ -85,9 +90,10 @@ help:
 	@echo "  make release-build     - Build artifacts for multiple platforms with version info"
 	@echo "  make install           - Install application. Use `go install`"
 	@echo "  make test              - Run go test"
-	@echo "  make test-bench      - Run go test ./... bench=."
+	@echo "  make test-bench        - Run go test ./... bench=."
 	@echo "  make test-verbose      - Run go test -v with go clean -testcache"
 	@echo "  make clean             - Remove build artifacts"
+	@echo "  make goreg             - Execute goreg -w to entire gofile"
 	@echo "  make publish tag=<tag> - Publish to github.com"
 	@echo "  make help              - Show this message"
 
