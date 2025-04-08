@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"path/filepath"
 
 	"golang.org/x/tools/imports"
 
@@ -10,6 +11,10 @@ import (
 
 func Apply(opt *commandline.Option) error {
 	filename := opt.FileName
+	basename := filepath.Base(filename)
+	if basename == "go.mod" || basename == "go.sum" {
+		return nil
+	}
 
 	src, err := os.ReadFile(filename)
 	if err != nil {
