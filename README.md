@@ -61,9 +61,6 @@ goreg supports configuration via a `goreg.toml` file. This allows users to defin
 ### Example `goreg.toml`
 
 ```toml
-[general]
-write = false  # Whether to write the formatted output to the file.
-
 [import]
 local_module = "myproject"  # Defines the local module path. If blank, it will be automatically guessed.
 organization_module = "github.com/myorg"  # Defines the organization's module path.
@@ -114,10 +111,16 @@ goreg -a file.go
 ```
 
 ## See Also
+
 - [Project Repository](https://github.com/magicdrive/goreg)
 - [README.md](https://github.com/magicdrive/goreg/README.md)
 
+## Author
+
+Copyright (c) 2025 Hiroshi IKEGAMI
+
 ## License
+
 This project is licensed under the [MIT License](https://github.com/magicdrive/goreg/LICENSE).
 
 

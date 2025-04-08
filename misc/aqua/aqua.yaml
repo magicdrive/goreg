@@ -8,7 +8,7 @@ packages:
     repo_owner: magicdrive
     repo_name: goreg
     description: "A tool to organize Go imports based on goimports"
-    version: v1.0.0
+    version: v1.1.1
     asset: goreg_linux_amd64.tar.gz
     files:
       - name: goreg
