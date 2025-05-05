@@ -1,5 +1,15 @@
+project_name: goreg
+
+release:
+  github:
+    owner: magicdrive
+    name: goreg
+  draft: false
+  prerelease: false
+
 builds:
-  - goos:
+  - id: goreg
+    goos:
       - linux
       - darwin
       - windows
@@ -10,8 +20,33 @@ builds:
       - -s -w -X "main.version=v{{.Version}}"
     env:
       - CGO_ENABLED=0
+    binary: goreg
+    main: ./main.go
+
 archives:
   - id: tar.gz
     format: tar.gz
   - id: binary
     format: binary
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+brews:
+  - name: goreg
+    repository:
+      owner: magicdrive
+      name: homebrew-tap
+      branch: main
+    homepage: "https://github.com/magicdrive/goreg"
+    description: "Yet another alternate `goimports` tool."
+    license: "MIT"
+    ids: [tar.gz]
+    install: |
+      bin.install "goreg"
+    test: |
+      system "#{bin}/goreg", "--version"
+    commit_author:
+      name: magicdrive bot
+      email: hiroshi.ikegami+githubbot@magicdrive.jp
+
