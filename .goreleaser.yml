@@ -26,8 +26,9 @@ builds:
 archives:
   - id: tar.gz
     format: tar.gz
-  - id: binary
-    format: binary
+    files:
+     - src: misc/completion/goreg-completion.sh
+       dst: completions/goreg-completion.sh
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
@@ -44,6 +45,11 @@ brews:
     ids: [tar.gz]
     install: |
       bin.install "goreg"
+    extra_install: |
+      cp "completions/goreg-completion.sh", "completions/goreg.zsh"
+
+      bash_completion.install "completions/goreg-completion.sh" => "goreg"
+      zsh_completion.install "completions/goreg.zsh" => "_goreg"
     test: |
       system "#{bin}/goreg", "--version"
     commit_author:
