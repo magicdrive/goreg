@@ -17,6 +17,13 @@ You can install `goreg` using `go install`:
 go install github.com/magicdrive/goreg@latest
 ```
 
+Alternatively, download using `homebrew`:
+
+```sh
+brew install magicdrive/tap/goreg
+```
+
+
 Alternatively, you can download a pre-built binary from the [Releases](https://github.com/magicdrive/goreg/releases) page.
 
 ## Usage
