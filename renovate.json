@@ -1,0 +1,71 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergePatch",
+    ":automergeMinor",
+    "group:allNonMajor"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": [
+    "before 10am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessagePrefix": "chore(deps):",
+  "prConcurrentLimit": 5,
+  "prCreation": "immediate",
+  "rebaseWhen": "behind-base-branch",
+  "packageRules": [
+    {
+      "description": "Go language dependencies update",
+      "matchDatasources": ["go"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "Go major dependencies",
+      "schedule": [
+        "before 10am on the first day of the month"
+      ]
+    },
+    {
+      "description": "golang.org/x packages grouping",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["golang.org/x{/,}**"],
+      "groupName": "golang.org/x packages",
+      "automerge": true
+    },
+    {
+      "description": "GitHub Actions update",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "pinDigests": true,
+      "automerge": true
+    },
+    {
+      "description": "Security patches are provided immediately",
+      "matchUpdateTypes": ["patch"],
+      "matchDatasources": ["go"],
+      "automerge": true,
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Vulnerable packages are given top priority",
+      "matchDatasources": ["go"],
+      "labels": ["security"],
+      "prPriority": 10
+    }
+  ],
+  "minimumReleaseAge": "3 days",
+  "prHourlyLimit": 2,
+  "ignorePaths": [
+    "**/testdata/**",
+    "**/*.golden"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "osvVulnerabilityAlerts": true
+}
