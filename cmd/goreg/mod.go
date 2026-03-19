@@ -7,10 +7,19 @@ import (
 
 	"github.com/magicdrive/goreg/internal/commandline"
 	"github.com/magicdrive/goreg/internal/core"
+	"github.com/magicdrive/goreg/internal/initcmd"
 )
 
 func Execute(version string) {
-	_, opt, err := commandline.OptParse(os.Args[1:])
+	args := os.Args[1:]
+
+	// Check for init subcommand
+	if len(args) > 0 && args[0] == "init" {
+		InitCommand()
+		return
+	}
+
+	_, opt, err := commandline.OptParse(args)
 	if err != nil {
 		log.Fatalf("Faital Error: %v\n", err)
 	}
@@ -41,5 +50,12 @@ func Execute(version string) {
 
 	if err := core.Apply(opt); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func InitCommand() {
+	if err := initcmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 }

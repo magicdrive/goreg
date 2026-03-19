@@ -1,8 +1,12 @@
 Usage: goreg [OPTIONS] <file-name.go>
+       goreg init
 
 Description:
    Yet another alternate `goimports` tool.
    It arranges imports in the order of standard library, third-party libraries, organization modules, and local modules.
+
+Subcommands:
+  init                           Create a default goreg.toml configuration file in the current directory.
 
 Options:
   -h, --help                     Show this help message and exit.
