@@ -30,7 +30,14 @@ Alternatively, you can download a pre-built binary from the [Releases](https://g
 
 ```sh
 goreg [OPTIONS] <file-name.go>
+goreg init
 ```
+
+### Subcommands
+
+| Subcommand | Description |
+|------------|-------------|
+| `init`     | Create a default `goreg.toml` configuration file in the current directory. |
 
 ### Options
 
@@ -64,6 +71,16 @@ goreg [OPTIONS] <file-name.go>
 ## Configuration
 
 goreg supports configuration via a `goreg.toml` file. This allows users to define default options instead of specifying them via CLI arguments every time.
+
+### Creating a Configuration File
+
+You can quickly create a default `goreg.toml` configuration file using the `init` subcommand:
+
+```sh
+goreg init
+```
+
+This will create a `goreg.toml` file in the current directory with default settings. If a `goreg.toml` file already exists, the command will not overwrite it and will display an error message.
 
 ### Example `goreg.toml`
 
