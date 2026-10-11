@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/pelletier/go-toml/v2 v2.4.3
-	golang.org/x/tools v0.50.0
+	golang.org/x/tools v0.51.0
 )
 
 require (
