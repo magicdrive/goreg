@@ -113,5 +113,5 @@ make publish-watch vX.Y.Z    # find and follow the run again, then verify
   replaced; release a new patch version instead.
 - **The tap pull request was not opened:** re-run the `release` job.
 
-See the Hephaestus [publish guide](https://github.com/magicdrive/hephaestus/blob/v1.2.0-rc.1/docs/publish.md#recovery)
-and [recovery guide](https://github.com/magicdrive/hephaestus/blob/v1.2.0-rc.1/docs/recovery.md).
+See the Hephaestus [publish guide](https://github.com/magicdrive/hephaestus/blob/v1.2.0/docs/publish.md#recovery)
+and [recovery guide](https://github.com/magicdrive/hephaestus/blob/v1.2.0/docs/recovery.md).

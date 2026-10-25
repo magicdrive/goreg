@@ -123,13 +123,13 @@ jobs:
         with:
           go-version-file: go.mod
       - name: hephaestus check
-        uses: magicdrive/hephaestus@bae0e2b3cbf41ad27299e0cfc3517a6affc7e15e # v1.2.0-rc.1
+        uses: magicdrive/hephaestus@160990d32bbc83af702bde8a63f49ffcac32972c # v1.2.0
         with:
           command: check
           github-token: ""
       - name: Snapshot build, archive, checksum
         id: snapshot
-        uses: magicdrive/hephaestus@bae0e2b3cbf41ad27299e0cfc3517a6affc7e15e # v1.2.0-rc.1
+        uses: magicdrive/hephaestus@160990d32bbc83af702bde8a63f49ffcac32972c # v1.2.0
         with:
           command: run
           stages: build,archive,checksum
