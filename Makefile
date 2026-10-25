@@ -2,8 +2,9 @@
 #
 # Works with GNU make 3.81 (macOS) and later. Releases are published only by
 # the release workflow on a v* tag push (see docs/development/releasing.md):
-# `make preflight tag=vX.Y.Z` checks that the release can run, and
-# `make publish tag=vX.Y.Z` runs that check, then creates and pushes the tag.
+# `make publish vX.Y.Z` (hephaestus publish) checks that the release can run,
+# asks, creates and pushes the tag, then follows the release workflow and
+# verifies what it published. `make publish-check vX.Y.Z` is the check alone.
 
 # Variables
 BUILD_DIR = $(CURDIR)/build
@@ -18,8 +19,10 @@ GO := GO111MODULE=on CGO_ENABLED=0 go
 # Tool versions. CI runs these targets, so the versions here are the ones CI
 # uses; Renovate updates them through the `# renovate:` comments.
 # renovate: datasource=go depName=github.com/magicdrive/hephaestus
-HEPHAESTUS_VERSION ?= v1.1.0
+HEPHAESTUS_VERSION ?= v1.2.0-rc.1
 HEPHAESTUS ?= go run github.com/magicdrive/hephaestus@$(HEPHAESTUS_VERSION)
+# The release tool behind the publish targets (tests replace it with a stub).
+PUBLISH ?= $(HEPHAESTUS) publish
 # renovate: datasource=go depName=honnef.co/go/tools
 STATICCHECK_VERSION ?= v0.8.2
 # renovate: datasource=go depName=golang.org/x/vuln
@@ -195,21 +198,76 @@ clean:
 goreg:
 	git ls-files | grep -e '.go$$' | xargs -I GOFILE goreg -w GOFILE
 
-# Publish to github.com: run the release preflight, then create and push the
-# tag. The release workflow builds and publishes the release from the tag.
+# Release goreg with Hephaestus (docs/development/releasing.md and
+# https://github.com/magicdrive/hephaestus/blob/main/docs/publish.md):
+#   make publish vX.Y.Z          (or VERSION=vX.Y.Z, or tag=vX.Y.Z as before)
+#   make publish-check vX.Y.Z    preflight only (no tag, no push)
+#   make publish-status vX.Y.Z   what exists for a version (read-only)
+#   make publish-watch vX.Y.Z    follow an already pushed tag, then verify
+#   make publish-help
+# The version given as a goal is a no-op goal (.DEFAULT). It reaches
+# hephaestus through the environment, never through a shell command line,
+# and hephaestus validates it. YES=1 on the command line skips the prompt.
+# `hephaestus publish` runs `hephaestus preflight --strict` as one of its
+# gates, so the former `make preflight` step before the tag push is kept.
+PUBLISH_TARGETS = publish publish-check publish-status publish-watch publish-help
+
+ifneq ($(filter $(PUBLISH_TARGETS),$(MAKECMDGOALS)),)
+PUBLISH_GOAL := $(firstword $(MAKECMDGOALS))
+PUBLISH_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+ifeq ($(filter $(PUBLISH_TARGETS),$(PUBLISH_GOAL)),)
+$(error publish targets come first and alone: make publish v1.2.3)
+endif
+ifneq ($(filter $(PUBLISH_TARGETS),$(PUBLISH_ARGS)),)
+$(error give one publish target at a time)
+endif
+ifneq ($(word 2,$(PUBLISH_ARGS)),)
+$(error one version is expected, got: $(PUBLISH_ARGS))
+endif
+ifeq ($(PUBLISH_GOAL),publish-help)
+ifneq ($(PUBLISH_ARGS),)
+$(error publish-help takes no version)
+endif
+endif
+export HEPHAESTUS_PUBLISH_ARGS := $(PUBLISH_ARGS)
+export HEPHAESTUS_PUBLISH_VERSION := $(if $(filter command line,$(origin VERSION)),$(VERSION))
+export HEPHAESTUS_PUBLISH_TAG := $(if $(filter command line,$(origin tag)),$(tag))
+PUBLISH_YES := $(if $(and $(filter command line,$(origin YES)),$(filter 1,$(YES))),-yes)
+ifneq ($(PUBLISH_ARGS),)
+ifeq ($(filter v0% v1% v2% v3% v4% v5% v6% v7% v8% v9% 0% 1% 2% 3% 4% 5% 6% 7% 8% 9%,$(PUBLISH_ARGS)),)
+$(error "$(PUBLISH_ARGS)" is not a version: make $(PUBLISH_GOAL) v1.2.3)
+endif
+# The version goal has no rule of its own: it is the publish target's
+# argument. (No other target starts with v<digit>, so none is shadowed.)
+.DEFAULT:
+	@:
+endif
+endif
+
+# Check, confirm, tag, push, follow the release workflow and verify the release
 .PHONY: publish
 publish:
-	@if [ -z "$(tag)" ]; then \
-		echo "Error: version is not set. Please set it and try again."; \
-		echo "ex) make publish tag=v0.0.1"; \
-		echo ; \
-		echo ; \
-		exit 1; \
-	fi
-	@$(MAKE) --no-print-directory preflight tag=$(tag)
-	git tag $(tag)
-	git push origin $(tag)
+	@$(PUBLISH) publish -from-make $(PUBLISH_YES)
 
+# Release preflight only (no tag, no push, no GitHub writes)
+.PHONY: publish-check
+publish-check:
+	@$(PUBLISH) check -from-make
+
+# Show what exists for a version (read-only)
+.PHONY: publish-status
+publish-status:
+	@$(PUBLISH) status -from-make
+
+# Follow the release run of an already pushed tag and verify the release
+.PHONY: publish-watch
+publish-watch:
+	@$(PUBLISH) watch -from-make
+
+# Show how releasing works and its safety rules
+.PHONY: publish-help
+publish-help:
+	@$(PUBLISH) help
 
 # Show help
 .PHONY: help
@@ -238,5 +296,9 @@ help:
 	@echo "  make preflight tag=<tag> - Read-only release checks before tagging"
 	@echo "  make clean             - Remove build artifacts"
 	@echo "  make goreg             - Execute goreg -w to entire gofile"
-	@echo "  make publish tag=<tag> - Run the preflight, then push the tag (the release workflow publishes)"
+	@echo "  make publish vX.Y.Z        - Release: preflight, confirm, tag, push, follow, verify (tag=vX.Y.Z also works)"
+	@echo "  make publish-check vX.Y.Z  - Release preflight only"
+	@echo "  make publish-status vX.Y.Z - Show the release state of a version"
+	@echo "  make publish-watch vX.Y.Z  - Follow an already pushed release tag"
+	@echo "  make publish-help          - How releasing works"
 	@echo "  make help              - Show this message"

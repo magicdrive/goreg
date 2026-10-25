@@ -41,9 +41,9 @@ builds:
       GOARCH: "{{ .Arch }}"
       CGO_ENABLED: "0"
       # Build with the toolchain go.mod asks for (`toolchain`), even when the
-      # go on PATH is older and GOTOOLCHAIN=local is set (the Hephaestus
-      # action's own setup-go leaves both behind). scripts/verify-dist.sh
-      # checks the toolchain recorded in every binary.
+      # go on PATH is older or GOTOOLCHAIN=local is set (a workstation, or a
+      # runner image's go; Hephaestus v1.1.0's action also left them behind).
+      # scripts/verify-dist.sh checks the toolchain recorded in every binary.
       GOTOOLCHAIN: auto
     output: "dist/bin/{{ .OS }}_{{ .Arch }}/goreg{{ .Ext }}"
 
@@ -105,8 +105,10 @@ brews:
       pull_request:
         enabled: true
 
-# Release safety checks before a tag is pushed:
-#   make preflight tag=vX.Y.Z   (hephaestus preflight --tag vX.Y.Z --strict)
+# Release safety checks before a tag is pushed. `make publish vX.Y.Z` and
+# `make publish-check vX.Y.Z` (hephaestus publish) run them as one gate;
+# `make preflight tag=vX.Y.Z` runs them alone
+# (hephaestus preflight --tag vX.Y.Z --strict).
 preflight:
   workflow: release.yml
   environment: release
