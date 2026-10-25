@@ -1,52 +1,120 @@
+# Releases goreg with Hephaestus on a v* tag push (docs/development/releasing.md).
+#
+#   ci       the full CI at the tagged commit (the release gate)
+#   build    build, archive and checksum with a read-only token, no secrets
+#            and no environment; dist/ is handed over as an artifact
+#   release  in the `release` environment: rehearse the tap pull request,
+#            attest provenance, publish the GitHub Release, open the tap PR.
+#            No build code runs here.
 name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  # TEST
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Run tests
-        run: make test
-
-  # RELEASE
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
-    runs-on: ubuntu-latest
+  ci:
+    uses: ./.github/workflows/ci.yml
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version-file: 'go.mod'
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+          persist-credentials: false
+      - name: Check the release tag
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+            || { echo "::error::tag $GITHUB_REF_NAME is not vMAJOR.MINOR.PATCH[-PRERELEASE]"; exit 1; }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          go-version-file: go.mod
+          # Release binaries are built without restored caches.
+          cache: false
+      - name: Build, archive and checksum
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: run
+          stages: build,archive,checksum
+          fresh: "true"
+          github-token: ""
+      - name: Verify the release layout
+        run: scripts/verify-dist.sh dist "${GITHUB_REF_NAME#v}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [ci, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: write     # create the release and upload assets
+      id-token: write     # sign provenance attestations
+      attestations: write
+    steps:
+      # The checkout provides hephaestus.yaml and scripts/verify-dist.sh.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Verify dist again before publishing anything
+        # No binary is executed in this job (VERIFY_DIST_NO_EXEC).
         env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-
+          VERIFY_DIST_NO_EXEC: "1"
+        run: scripts/verify-dist.sh dist "${GITHUB_REF_NAME#v}"
+      - name: Require the tap token
+        # Without a token the dry run below cannot read the tap and would pass.
+        env:
+          HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN != '' }}
+        run: |
+          [[ "$HAS_TAP_TOKEN" == true ]] \
+            || { echo "::error::HOMEBREW_TAP_GITHUB_TOKEN is not set in the release environment"; exit 1; }
+      - name: Rehearse the formula and tap pull request (dry run)
+        # Checks the tap token, the tap's formula directory, a newer formula on
+        # the tap and the pull request branch before the release becomes
+        # public, since a published release cannot be taken back.
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: run
+          stages: formula,tap
+          dry-run: "true"
+          github-token: ""
+          tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/goreg_*.tar.gz
+            dist/goreg_checksums.txt
+      - name: Publish the GitHub Release
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: release
+      - name: Generate the formula and open the tap pull request
+        # Prereleases (v1.2.3-rc.1) skip the tap (brews[].skip_upload: auto).
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: run
+          stages: formula,tap
+          github-token: ""
+          tap-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

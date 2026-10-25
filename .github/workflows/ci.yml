@@ -5,22 +5,243 @@ on:
     branches:
       - main
   pull_request:
+  # The release workflow runs this whole CI at the tagged commit before
+  # anything is published.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Called from release.yml, github.workflow is "Release" and the ref is the
+  # tag, so this group never collides with the caller's release-<ref> group.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version-file: 'go.mod'
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: make fmt-check
+      - name: go vet (host and windows)
+        run: make vet
+      - name: go mod tidy
+        run: make tidy-check
+      - name: staticcheck
+        run: make lint
+      - name: govulncheck
+        run: make vuln
+      - name: actionlint
+        run: make actionlint
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
 
+  test:
+    # Native tests on every OS goreg ships for (amd64 on Linux and Windows,
+    # arm64 on macOS). Every release target is cross-built in `snapshot` and
+    # run on its own platform in `native-smoke`.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - name: Install dependencies
         run: go mod download
-
       - name: Run tests
+        if: runner.os != 'Windows'
         run: make test
+      - name: Build and smoke test (--version, --help, formatting)
+        if: runner.os != 'Windows'
+        run: make smoke
+      # GNU make is not part of the Windows runner image: the same commands
+      # as `make test` and `make smoke`.
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        env:
+          CGO_ENABLED: "0"
+        run: go test ./...
+      - name: Build and smoke test (Windows)
+        if: runner.os == 'Windows'
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go build -o build/goreg.exe -ldflags "-X main.version=$(git describe --tags --always)" .
+          ./build/goreg.exe --version | grep -q '^goreg version .'
+          ./build/goreg.exe --help | grep -q '^Usage: goreg '
+          ./build/goreg.exe --local github.com/magicdrive/goreg misc/example.go.txt | grep -q '^package main'
+          ./build/goreg.exe --version
 
+  race:
+    # The race detector needs cgo; Linux and macOS runners have a C
+    # toolchain. Windows is covered by `test` without -race.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Race detector
+        run: make test-race
+
+  snapshot:
+    # The release build without a tag: hephaestus check, then build, archive
+    # and checksum for all eight targets with the same action and inputs as
+    # release.yml, and the layout every release so far has had.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: hephaestus check
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: check
+          github-token: ""
+      - name: Snapshot build, archive, checksum
+        id: snapshot
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
+        with:
+          command: run
+          stages: build,archive,checksum
+          snapshot: "true"
+          fresh: "true"
+          github-token: ""
+      - name: Verify the release layout
+        run: scripts/verify-dist.sh dist 0.0.0-SNAPSHOT
+      - name: Show artifacts
+        env:
+          ARTIFACTS: ${{ steps.snapshot.outputs.artifacts }}
+        run: |
+          echo "$ARTIFACTS" | jq .
+          for f in dist/goreg_*.tar.gz; do echo "== $f"; tar -tzvf "$f"; done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snapshot-dist
+          path: |
+            dist/goreg_*.tar.gz
+            dist/goreg_checksums.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  native-smoke:
+    # Each snapshot archive's binary, run on its own platform.
+    needs: [snapshot]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, target: linux_amd64}
+          - {os: ubuntu-latest, target: linux_386}
+          - {os: ubuntu-24.04-arm, target: linux_arm64}
+          - {os: macos-latest, target: darwin_arm64}
+          - {os: macos-15-intel, target: darwin_amd64}
+          - {os: windows-latest, target: windows_amd64}
+          - {os: windows-latest, target: windows_386}
+          - {os: windows-11-arm, target: windows_arm64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snapshot-dist
+          path: dist
+      - name: Run goreg from the ${{ matrix.target }} archive
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          exe=goreg
+          [[ "$TARGET" == windows_* ]] && exe=goreg.exe
+          mkdir -p "$RUNNER_TEMP/x"
+          tar -xzf "dist/goreg_0.0.0-SNAPSHOT_${TARGET}.tar.gz" -C "$RUNNER_TEMP/x"
+          bin="$RUNNER_TEMP/x/$exe"
+          out="$("$bin" --version | tr -d '\r')"
+          echo "$out"
+          [[ "$out" == "goreg version v0.0.0-SNAPSHOT" ]]
+          "$bin" --help | grep -q '^Usage: goreg '
+          "$bin" --local github.com/magicdrive/goreg misc/example.go.txt | grep -q '^package main'
+
+  homebrew-e2e:
+    # The tap's current goreg formula, then `brew upgrade` to the formula
+    # Hephaestus generates (local archives): style, audit --strict, install,
+    # completions, test, uninstall.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Put Homebrew on PATH and install zsh (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+      - name: Homebrew end-to-end test
+        run: make e2e-homebrew
+
+  renovate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: renovate-config-validator --strict
+        run: make renovate-check
+
+  ci-gate:
+    # One check that summarizes every job above.
+    if: always()
+    needs: [lint, test, race, snapshot, native-smoke, homebrew-e2e, renovate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for r in $RESULTS; do [[ "$r" == success ]] || exit 1; done
