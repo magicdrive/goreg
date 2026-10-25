@@ -53,6 +53,22 @@
       "matchDatasources": ["go"],
       "labels": ["security"],
       "prPriority": 10
+    },
+    {
+      "description": "Hephaestus: the Action (SHA pin in the workflows) and the CLI version in the Makefile move together",
+      "matchPackageNames": ["magicdrive/hephaestus", "github.com/magicdrive/hephaestus"],
+      "groupName": "Hephaestus",
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions pinned in the Makefile and the workflows, each marked with a `# renovate:` comment on the line above",
+      "managerFilePatterns": ["/(^|/)Makefile$/", "/(^|/)\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+[A-Z_]+\\s*(\\?=|:=|=|:)\\s*\"?(?<currentValue>[^\\s\"]+)\"?"
+      ]
     }
   ],
   "minimumReleaseAge": "3 days",

@@ -13,6 +13,7 @@ import (
 func FindGoregToml() (string, error) {
 
 	if notUseflg := os.Getenv("GOREG_NOT_USE_CONFIGFILE"); notUseflg != "" {
+		//lint:ignore ST1005 existing message, kept verbatim
 		return "", errors.New("specified env GOREG_NOT_USE_CONFIGFILE.")
 	}
 

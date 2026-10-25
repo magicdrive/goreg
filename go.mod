@@ -2,6 +2,8 @@ module github.com/magicdrive/goreg
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/tools v0.52.0

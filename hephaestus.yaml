@@ -1,0 +1,114 @@
+# goreg is released with Hephaestus (https://github.com/magicdrive/hephaestus).
+#
+# The release workflow (.github/workflows/release.yml) runs build, archive and
+# checksum in a read-only job, then publishes the GitHub Release and opens a
+# pull request on magicdrive/homebrew-tap from a job in the `release`
+# environment. `make snapshot` runs build, archive and checksum locally.
+#
+# The asset layout is kept identical to the releases GoReleaser produced up to
+# v1.3.10: eight targets (no darwin/386), tar.gz on every OS including
+# Windows, the binary and the completion scripts at the same archive paths,
+# goreg_checksums.txt, and `goreg --version` printing "goreg version vX.Y.Z".
+# scripts/verify-dist.sh checks exactly that, in CI and before publishing.
+version: 1
+
+project:
+  name: goreg
+  description: Yet another alternate `goimports` tool
+  homepage: https://github.com/magicdrive/goreg
+  license: MIT
+
+builds:
+  - id: goreg
+    matrix:
+      os: [darwin, linux, windows]
+      arch: ["386", amd64, arm64]
+      exclude:
+        - os: darwin
+          arch: "386"
+    command:
+      - go
+      - build
+      - -trimpath
+      - -ldflags
+      # Same value as GoReleaser's `-s -w -X "main.version=v{{.Version}}"`.
+      - "-s -w -X main.version=v{{ .Version }}"
+      - -o
+      - "dist/bin/{{ .OS }}_{{ .Arch }}/goreg{{ .Ext }}"
+      - .
+    env:
+      GOOS: "{{ .OS }}"
+      GOARCH: "{{ .Arch }}"
+      CGO_ENABLED: "0"
+      # Build with the toolchain go.mod asks for (`toolchain`), even when the
+      # go on PATH is older or GOTOOLCHAIN=local is set (a workstation, or a
+      # runner image's go; Hephaestus v1.1.0's action also left them behind).
+      # scripts/verify-dist.sh checks the toolchain recorded in every binary.
+      GOTOOLCHAIN: auto
+    output: "dist/bin/{{ .OS }}_{{ .Arch }}/goreg{{ .Ext }}"
+
+archives:
+  - id: goreg
+    name: "{{ .Project }}_{{ .Version }}_{{ .OS }}_{{ .Arch }}"
+    # tar.gz on Windows too: every release so far ships
+    # goreg_<version>_windows_<arch>.tar.gz, and download scripts rely on it.
+    format: tar.gz
+    files:
+      - src: "dist/bin/{{ .OS }}_{{ .Arch }}/goreg{{ .Ext }}"
+        dst: "goreg{{ .Ext }}"
+        mode: "0755"
+      - src: misc/completions/goreg-completion.sh
+        dst: completions/goreg-completion.sh
+        mode: "0644"
+      - src: misc/completions/bash/goreg-completion.bash
+        dst: completions/bash/goreg-completion.bash
+        mode: "0644"
+      - src: misc/completions/zsh/_goreg
+        dst: completions/zsh/_goreg
+        mode: "0644"
+
+checksum:
+  name: "{{ .Project }}_checksums.txt"
+
+release:
+  github:
+    owner: magicdrive
+    name: goreg
+    # The repository keeps no CHANGELOG; GitHub writes the notes from the
+    # merged pull requests when the release is created.
+    generate_notes: true
+
+brews:
+  - name: goreg
+    ids: [goreg]
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    # magicdrive/homebrew-tap keeps its formulae at the repository root;
+    # creating Formula/ there would hide them from Homebrew, so `directory`
+    # stays unset. Prereleases (v1.2.3-rc.1) never update the tap.
+    skip_upload: auto
+    install: |
+      bin.install "goreg"
+    # The scripts shipped in the archive, installed as before:
+    # bash_completion/goreg and zsh_completion/_goreg.
+    completions:
+      files:
+        bash: completions/bash/goreg-completion.bash
+        zsh: completions/zsh/_goreg
+    test: |
+      assert_match "goreg version v#{version}", shell_output("#{bin}/goreg --version")
+    commit_author:
+      name: magicdrive bot
+      email: hiroshi.ikegami+githubbot@magicdrive.jp
+    repository:
+      owner: magicdrive
+      name: homebrew-tap
+      pull_request:
+        enabled: true
+
+# Release safety checks before a tag is pushed. `make publish vX.Y.Z` and
+# `make publish-check vX.Y.Z` (hephaestus publish) run them as one gate;
+# `make preflight tag=vX.Y.Z` runs them alone
+# (hephaestus preflight --tag vX.Y.Z --strict).
+preflight:
+  workflow: release.yml
+  environment: release

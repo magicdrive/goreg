@@ -64,6 +64,7 @@ func GenerateOrderStrings(input string) ([]model.ImportGroup, error) {
 	result := Unique(validOrder)
 
 	if len(result) != 4 {
+		//lint:ignore ST1005 user-facing message, kept verbatim
 		return nil, fmt.Errorf("--order must include all of std, thirdparty, organization, and local.")
 	} else {
 		return result, nil
