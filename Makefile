@@ -18,7 +18,7 @@ GO := GO111MODULE=on CGO_ENABLED=0 go
 # Tool versions. CI runs these targets, so the versions here are the ones CI
 # uses; Renovate updates them through the `# renovate:` comments.
 # renovate: datasource=go depName=github.com/magicdrive/hephaestus
-HEPHAESTUS_VERSION ?= v1.1.0
+HEPHAESTUS_VERSION ?= v1.1.1-0.20261025105032-4414722a804d
 HEPHAESTUS ?= go run github.com/magicdrive/hephaestus@$(HEPHAESTUS_VERSION)
 # renovate: datasource=go depName=honnef.co/go/tools
 STATICCHECK_VERSION ?= v0.8.2
