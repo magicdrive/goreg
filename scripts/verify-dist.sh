@@ -15,6 +15,11 @@
 # "goreg version v<version>" (skipped with VERIFY_DIST_NO_EXEC=1, used where
 # release credentials are present, so that no built code runs there).
 #
+# Every binary must have been built by one Go toolchain at least as new as the
+# one go.mod requires (its `toolchain` directive, else its `go` directive), as
+# recorded in the binary's build information (read with `go version`, which
+# does not execute the binary).
+#
 # Usage: scripts/verify-dist.sh <dist-dir> <version without v>
 set -euo pipefail
 export LC_ALL=C
@@ -30,6 +35,25 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 fail() { echo "verify-dist: $*" >&2; exit 1; }
+
+# version_ge A B: whether version A (N.N[.N]) is at least B.
+version_ge() {
+  local -a a b
+  local i
+  IFS=. read -ra a <<<"$1"
+  IFS=. read -ra b <<<"$2"
+  for i in 0 1 2; do
+    if (( ${a[i]:-0} > ${b[i]:-0} )); then return 0; fi
+    if (( ${a[i]:-0} < ${b[i]:-0} )); then return 1; fi
+  done
+  return 0
+}
+
+required_go="$(awk '$1 == "toolchain" { sub(/^go/, "", $2); print $2 }' "$repo/go.mod")"
+[[ -n "$required_go" ]] || required_go="$(awk '$1 == "go" { print $2; exit }' "$repo/go.mod")"
+[[ "$required_go" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || fail "cannot read the required Go version from go.mod ('$required_go')"
+command -v go >/dev/null || fail "go is needed to read the toolchain recorded in the binaries"
+toolchains=""
 
 [[ -d "$dist" ]] || fail "$dist is not a directory"
 
@@ -81,6 +105,12 @@ for t in "${targets[@]}"; do
   for f in goreg-completion.sh bash/goreg-completion.bash zsh/_goreg; do
     cmp -s "$dir/completions/$f" "$repo/misc/completions/$f" || fail "$t: completions/$f differs from misc/completions/$f"
   done
+  # The toolchain recorded in the binary (`<file>: go1.26.10`); run outside the
+  # module so that go.mod cannot switch the go command itself.
+  built_with="$(cd "$work" && GOTOOLCHAIN=local go version "$dir/$exe" | awk '{ print $NF }')"
+  [[ "$built_with" =~ ^go([0-9]+\.[0-9]+(\.[0-9]+)?)$ ]] || fail "$t: unexpected toolchain '$built_with' in the binary"
+  version_ge "${BASH_REMATCH[1]}" "$required_go" || fail "$t: built with $built_with, go.mod requires go$required_go or newer"
+  toolchains="$(printf '%s\n%s\n' "$toolchains" "$built_with" | sed '/^$/d' | sort -u)"
   if [[ -z "${VERIFY_DIST_NO_EXEC:-}" && "$t" == "${host_os}_${host_arch}" ]]; then
     out="$("$dir/$exe" --version)"
     [[ "$out" == "goreg version v$version" ]] || fail "$t: --version printed '$out', want 'goreg version v$version'"
@@ -88,4 +118,6 @@ for t in "${targets[@]}"; do
   fi
 done
 
+[[ "$(wc -l <<<"$toolchains" | tr -d ' ')" == 1 ]] || fail "binaries built by different toolchains: ${toolchains//$'\n'/ }"
+echo "verify-dist: every binary built with $toolchains (go.mod requires go$required_go or newer)"
 echo "verify-dist: ok (${#targets[@]} archives for $version, goreg_checksums.txt)"

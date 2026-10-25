@@ -40,6 +40,11 @@ builds:
       GOOS: "{{ .OS }}"
       GOARCH: "{{ .Arch }}"
       CGO_ENABLED: "0"
+      # Build with the toolchain go.mod asks for (`toolchain`), even when the
+      # go on PATH is older and GOTOOLCHAIN=local is set (the Hephaestus
+      # action's own setup-go leaves both behind). scripts/verify-dist.sh
+      # checks the toolchain recorded in every binary.
+      GOTOOLCHAIN: auto
     output: "dist/bin/{{ .OS }}_{{ .Arch }}/goreg{{ .Ext }}"
 
 archives:

@@ -77,6 +77,12 @@ jobs:
         with:
           name: dist
           path: dist
+      # Only for `go version`, which reads the toolchain recorded in the
+      # binaries without running them; nothing is built in this job.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
       - name: Verify dist again before publishing anything
         # No binary is executed in this job (VERIFY_DIST_NO_EXEC).
         env:

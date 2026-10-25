@@ -108,10 +108,13 @@ tidy-check:
 lint:
 	@$(GO) run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
-# Known vulnerabilities in the dependencies and the Go standard library
+# Known vulnerabilities in the dependencies and the Go standard library of
+# the toolchain releases are built with (GOTOOLCHAIN=auto, as in
+# hephaestus.yaml: at least the go.mod `toolchain`)
 .PHONY: vuln
 vuln:
-	@$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+	@echo "govulncheck: standard library of $$(GOTOOLCHAIN=auto go env GOVERSION)"
+	@GOTOOLCHAIN=auto $(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 # Build, then run the binary: --version, --help and one formatting run
 .PHONY: smoke
