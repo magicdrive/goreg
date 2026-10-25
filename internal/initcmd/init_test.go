@@ -3,6 +3,7 @@ package initcmd_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -154,6 +155,9 @@ func TestExecute_ContentMatchesEmbedded(t *testing.T) {
 }
 
 func TestExecute_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no Unix permission bits; os.Stat reports 0666 for every writable file")
+	}
 	// Create temporary directory
 	tmpDir := t.TempDir()
 

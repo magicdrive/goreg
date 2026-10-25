@@ -188,9 +188,10 @@ jobs:
           set -euo pipefail
           exe=goreg
           [[ "$TARGET" == windows_* ]] && exe=goreg.exe
-          mkdir -p "$RUNNER_TEMP/x"
-          tar -xzf "dist/goreg_0.0.0-SNAPSHOT_${TARGET}.tar.gz" -C "$RUNNER_TEMP/x"
-          bin="$RUNNER_TEMP/x/$exe"
+          # A relative directory: Git Bash tar reads "D:\\..." as a remote host.
+          mkdir -p x
+          tar -xzf "dist/goreg_0.0.0-SNAPSHOT_${TARGET}.tar.gz" -C x
+          bin="./x/$exe"
           out="$("$bin" --version | tr -d '\r')"
           echo "$out"
           [[ "$out" == "goreg version v0.0.0-SNAPSHOT" ]]
