@@ -44,7 +44,7 @@ jobs:
           # Release binaries are built without restored caches.
           cache: false
       - name: Build, archive and checksum
-        uses: magicdrive/hephaestus@4414722a804d958179fd547c26d7b2fe762e308e # v1.1.1-0.20261025105032-4414722a804d
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
         with:
           command: run
           stages: build,archive,checksum
@@ -99,7 +99,7 @@ jobs:
         # Checks the tap token, the tap's formula directory, a newer formula on
         # the tap and the pull request branch before the release becomes
         # public, since a published release cannot be taken back.
-        uses: magicdrive/hephaestus@4414722a804d958179fd547c26d7b2fe762e308e # v1.1.1-0.20261025105032-4414722a804d
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
         with:
           command: run
           stages: formula,tap
@@ -113,12 +113,12 @@ jobs:
             dist/goreg_*.tar.gz
             dist/goreg_checksums.txt
       - name: Publish the GitHub Release
-        uses: magicdrive/hephaestus@4414722a804d958179fd547c26d7b2fe762e308e # v1.1.1-0.20261025105032-4414722a804d
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
         with:
           command: release
       - name: Generate the formula and open the tap pull request
         # Prereleases (v1.2.3-rc.1) skip the tap (brews[].skip_upload: auto).
-        uses: magicdrive/hephaestus@4414722a804d958179fd547c26d7b2fe762e308e # v1.1.1-0.20261025105032-4414722a804d
+        uses: magicdrive/hephaestus@550d48f64917749742574b5c2ff1b292940ff71a # v1.1.0
         with:
           command: run
           stages: formula,tap
