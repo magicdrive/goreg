@@ -30,7 +30,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 # renovate: datasource=go depName=github.com/rhysd/actionlint
 ACTIONLINT_VERSION ?= v1.7.12
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION ?= 44.178.2
+RENOVATE_VERSION ?= 44.181.0
 
 # Tag of the local, never published build used by the Homebrew end-to-end
 # test (it must sort after every real release, for `brew upgrade`).
