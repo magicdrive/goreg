@@ -19,7 +19,7 @@ GO := GO111MODULE=on CGO_ENABLED=0 go
 # Tool versions. CI runs these targets, so the versions here are the ones CI
 # uses; Renovate updates them through the `# renovate:` comments.
 # renovate: datasource=go depName=github.com/magicdrive/hephaestus
-HEPHAESTUS_VERSION ?= v1.2.0
+HEPHAESTUS_VERSION ?= v1.3.0
 HEPHAESTUS ?= go run github.com/magicdrive/hephaestus@$(HEPHAESTUS_VERSION)
 # The release tool behind the publish targets (tests replace it with a stub).
 PUBLISH ?= $(HEPHAESTUS) publish
