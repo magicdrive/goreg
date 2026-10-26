@@ -41,9 +41,18 @@ if brew list --formula goreg >/dev/null 2>&1; then
   exit 1
 fi
 
+# Homebrew 7.0.11 and later load a formula of a tap that is not official only
+# once it is trusted (brew trust): brew audit and brew info refuse the
+# formula of an untrusted tap. Only the throw-away tap is trusted, while it
+# exists (when this Homebrew has brew trust); brew untrust also forgets the
+# formula brew install trusts.
+trusts=false
+brew trust --help >/dev/null 2>&1 && trusts=true
+
 cleanup() {
   set +e
   brew uninstall --force "$tap/goreg" >/dev/null 2>&1
+  if [[ "$trusts" == true ]]; then brew untrust --tap "$tap" >/dev/null 2>&1; fi
   brew untap --force "$tap" >/dev/null 2>&1
   rm -rf "$work"
 }
@@ -69,6 +78,7 @@ check_installed() { # check_installed VERSION
 }
 
 brew tap-new --no-git "$tap" >/dev/null
+if [[ "$trusts" == true ]]; then brew trust --tap "$tap"; fi
 formulae="$(brew --repository "$tap")/Formula"
 
 step "goreg $current_version from the tap's current formula (read only)"
