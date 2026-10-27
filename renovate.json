@@ -17,7 +17,17 @@
   "prConcurrentLimit": 5,
   "prCreation": "immediate",
   "rebaseWhen": "behind-base-branch",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 10am on monday"]
+  },
   "packageRules": [
+    {
+      "description": "The Renovate of make renovate-check (.github/renovate-check): package.json, its lockfile and the Node.js its engines require move together",
+      "matchFileNames": [".github/renovate-check/**"],
+      "groupName": "Renovate validator",
+      "automerge": false
+    },
     {
       "description": "Go language dependencies update",
       "matchDatasources": ["go"],

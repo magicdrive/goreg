@@ -29,8 +29,6 @@ STATICCHECK_VERSION ?= v0.8.2
 GOVULNCHECK_VERSION ?= v1.9.0
 # renovate: datasource=go depName=github.com/rhysd/actionlint
 ACTIONLINT_VERSION ?= v1.7.12
-# renovate: datasource=npm depName=renovate
-RENOVATE_VERSION ?= 44.178.2
 
 # Tag of the local, never published build used by the Homebrew end-to-end
 # test (it must sort after every real release, for `brew upgrade`).
@@ -142,10 +140,19 @@ check: fmt-check vet tidy-check lint test test-race vuln smoke hephaestus-check
 actionlint:
 	@$(GO) run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
 
-# Validate renovate.json
+# Validate renovate.json (needs Node.js, of .github/renovate-check/.node-version,
+# and npm). Renovate and its whole dependency tree are pinned by
+# .github/renovate-check/package-lock.json and installed with `npm ci`, which
+# Renovate updates (npm manager, lockFileMaintenance).
 .PHONY: renovate-check
 renovate-check:
-	@npx --yes --package renovate@$(RENOVATE_VERSION) -- renovate-config-validator --strict renovate.json
+	@$(CURDIR)/.github/renovate-check/run.sh
+
+# The failure-injection tests of renovate-check's install (a fake registry:
+# lockfile pinning, 404 and integrity failures)
+.PHONY: renovate-check-test
+renovate-check-test:
+	@python3 $(CURDIR)/.github/renovate-check/test_run.py
 
 # Validate hephaestus.yaml
 .PHONY: hephaestus-check
@@ -296,6 +303,7 @@ help:
 	@echo "  make check             - Run every local quality gate"
 	@echo "  make actionlint        - Lint the GitHub Actions workflows"
 	@echo "  make renovate-check    - Validate renovate.json"
+	@echo "  make renovate-check-test - Test renovate-check's pinned install (fake registry)"
 	@echo "  make hephaestus-check  - Validate hephaestus.yaml"
 	@echo "  make snapshot          - Build, archive and checksum every release target into ./dist"
 	@echo "  make e2e-homebrew      - Homebrew install/upgrade end-to-end test (CI runners)"

@@ -1,0 +1,9 @@
+{
+  "name": "goreg-renovate-check",
+  "private": true,
+  "description": "CI-only: the Renovate whose renovate-config-validator checks renovate.json (make renovate-check). Never a runtime dependency.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "renovate": "44.181.0"
+  }
+}
