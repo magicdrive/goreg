@@ -13,6 +13,7 @@ const (
 
 type ImportPack struct {
 	Entity      *ast.ImportSpec
+	Path        string
 	LineComment *ast.Comment
 	Doc         []string
 	End         string

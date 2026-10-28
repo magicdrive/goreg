@@ -138,3 +138,38 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected default import order to be 'std,thirdparty,organization,local', got %s", cfg.Import.Order)
 	}
 }
+
+// An empty goreg.toml, or one that sets only some keys, gets the defaults
+// for the others.
+func TestLoadToml_EmptyAndPartial(t *testing.T) {
+	for _, content := range []string{"", "[format]\nminimize_group = true\n"} {
+		tempFile := filepath.Join(t.TempDir(), "goreg.toml")
+		if err := os.WriteFile(tempFile, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := LoadToml(tempFile)
+		if err != nil {
+			t.Fatalf("%q: %v", content, err)
+		}
+		if cfg == nil {
+			t.Fatalf("%q: nil configuration", content)
+		}
+		if cfg.Import.Order != "std,thirdparty,organization,local" {
+			t.Errorf("%q: order %q, want the default", content, cfg.Import.Order)
+		}
+	}
+}
+
+// LoadConfig reports a goreg.toml it cannot load instead of dropping it.
+func TestLoadConfig_Invalid(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "goreg.toml"), []byte("[import\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOREG_NOT_USE_CONFIGFILE", "")
+	t.Chdir(dir)
+	cfg, err := LoadConfig()
+	if err == nil {
+		t.Fatalf("no error, got %+v", cfg)
+	}
+}
