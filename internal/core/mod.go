@@ -74,6 +74,16 @@ func writeFileAtomic(filename string, data []byte) (err error) {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("%s: not a regular file", filename)
 	}
+	// The rename below needs only the directory to be writable. A file the
+	// user may not write (a read-only file) is refused as when it was written
+	// in place, before anything is created.
+	f, err := os.OpenFile(target, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
 
 	tmp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".goreg-*")
 	if err != nil {

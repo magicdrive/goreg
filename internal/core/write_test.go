@@ -154,6 +154,29 @@ func TestApplyWrite_ReadOnlyDirectory(t *testing.T) {
 	}
 }
 
+// A read-only file is refused, as when it was written in place, although
+// its directory is writable and a rename would replace it.
+func TestApplyWrite_ReadOnlyFile(t *testing.T) {
+	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
+		t.Skip("root writes read-only files")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	writeFile(t, path, unsortedSrc, 0o444)
+	// Windows cannot remove a read-only file when the test cleans up.
+	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
+
+	if err := Apply(writeOpt(path)); !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("Apply on a read-only file: %v, want a permission error", err)
+	}
+	if got := readFile(t, path); got != unsortedSrc {
+		t.Errorf("the read-only file changed:\n%s", got)
+	}
+	if names := dirEntries(t, dir); len(names) != 1 {
+		t.Errorf("files left in the directory: %v", names)
+	}
+}
+
 // A symbolic link stays a link; the file it points to gets the new content.
 func TestApplyWrite_SymlinkKeepsLink(t *testing.T) {
 	dir := t.TempDir()
