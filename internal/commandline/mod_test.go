@@ -2,7 +2,9 @@ package commandline_test
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/magicdrive/goreg/internal/commandline"
@@ -321,4 +323,95 @@ func TestOptParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// inConfigDir runs the test in a new directory holding a goreg.toml with
+// the given content, with no configuration file found in the home directory.
+func inConfigDir(t *testing.T, content string) {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "goreg.toml"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("GOREG_NOT_USE_CONFIGFILE", "")
+	t.Chdir(dir)
+}
+
+func TestOptParse_RemoveImportComment(t *testing.T) {
+	t.Setenv("GOREG_NOT_USE_CONFIGFILE", "1")
+	for _, args := range [][]string{{"-r"}, {"--remove-import-comment"}} {
+		_, got, err := commandline.OptParse(args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !got.RemoveImportCommentFlag {
+			t.Errorf("%v: RemoveImportCommentFlag is false", args)
+		}
+	}
+	_, got, err := commandline.OptParse(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RemoveImportCommentFlag {
+		t.Error("RemoveImportCommentFlag is true by default")
+	}
+}
+
+func TestOptParse_RemoveImportCommentFromConfig(t *testing.T) {
+	inConfigDir(t, "[format]\nremove_import_comment = true\n")
+	_, got, err := commandline.OptParse(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.RemoveImportCommentFlag {
+		t.Error("remove_import_comment = true in goreg.toml did not set RemoveImportCommentFlag")
+	}
+}
+
+// An empty goreg.toml is the default configuration.
+func TestOptParse_EmptyConfig(t *testing.T) {
+	inConfigDir(t, "")
+	_, got, err := commandline.OptParse([]string{"main.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.ImportOrder, model.DefaultOrder) {
+		t.Errorf("ImportOrder %v, want %v", got.ImportOrder, model.DefaultOrder)
+	}
+	if got.FileName != "main.go" {
+		t.Errorf("FileName %q", got.FileName)
+	}
+}
+
+// A goreg.toml that is not valid TOML, or cannot be read, is an error
+// (never a panic, never the defaults).
+func TestOptParse_BadConfig(t *testing.T) {
+	t.Run("invalid", func(t *testing.T) {
+		inConfigDir(t, "[import\n")
+		_, got, err := commandline.OptParse([]string{"main.go"})
+		if err == nil {
+			t.Fatalf("no error, got %+v", got)
+		}
+		if !strings.Contains(err.Error(), "goreg.toml") {
+			t.Errorf("the error does not name the file: %v", err)
+		}
+	})
+	t.Run("unreadable", func(t *testing.T) {
+		dir := t.TempDir()
+		// A directory named goreg.toml is found but cannot be read.
+		if err := os.Mkdir(filepath.Join(dir, "goreg.toml"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("USERPROFILE", home)
+		t.Setenv("GOREG_NOT_USE_CONFIGFILE", "")
+		t.Chdir(dir)
+		if _, got, err := commandline.OptParse([]string{"main.go"}); err == nil {
+			t.Fatalf("no error, got %+v", got)
+		}
+	})
 }

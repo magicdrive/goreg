@@ -18,7 +18,10 @@ func OptParse(args []string) (int, *Option, error) {
 
 	optLength := len(args)
 
-	cfg, _ := common.LoadConfig()
+	cfg, err := common.LoadConfig()
+	if err != nil {
+		return optLength, nil, err
+	}
 
 	fs := flag.NewFlagSet("goreg", flag.ExitOnError)
 
@@ -73,8 +76,7 @@ func OptParse(args []string) (int, *Option, error) {
 		fmt.Fprintln(os.Stderr, "\nHelpOption:")
 		fmt.Fprintln(os.Stderr, "    goreg --help")
 	}
-	err := fs.Parse(args)
-	if err != nil {
+	if err := fs.Parse(args); err != nil {
 		return optLength, nil, err
 	}
 
@@ -95,16 +97,17 @@ func OptParse(args []string) (int, *Option, error) {
 	}
 
 	result := &Option{
-		ImportOrder:          _importOrder,
-		OrganizationName:     *organizationOpt,
-		MinimizeGroupFlag:    *minimizeGroupOpt,
-		SortIncludeAliasFlag: *sortIncludeAliasOpt,
-		WriteFlag:            *writeFlagOpt,
-		HelpFlag:             *helpFlagOpt,
-		VersionFlag:          *versionFlagOpt,
-		ModulePath:           *modulePathOpt,
-		FileName:             filename,
-		FlagSet:              fs,
+		ImportOrder:             _importOrder,
+		OrganizationName:        *organizationOpt,
+		RemoveImportCommentFlag: *removeImportCommentOpt,
+		MinimizeGroupFlag:       *minimizeGroupOpt,
+		SortIncludeAliasFlag:    *sortIncludeAliasOpt,
+		WriteFlag:               *writeFlagOpt,
+		HelpFlag:                *helpFlagOpt,
+		VersionFlag:             *versionFlagOpt,
+		ModulePath:              *modulePathOpt,
+		FileName:                filename,
+		FlagSet:                 fs,
 	}
 
 	OverRideHelp(fs)

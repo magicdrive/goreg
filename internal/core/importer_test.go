@@ -2,6 +2,8 @@ package core_test
 
 import (
 	"bytes"
+	"go/parser"
+	"go/token"
 	"testing"
 
 	"github.com/magicdrive/goreg/internal/commandline"
@@ -252,6 +254,153 @@ import (
 			if !bytes.Equal(bytes.TrimSpace(output), bytes.TrimSpace([]byte(tc.expected))) {
 				t.Errorf("expected:\n%s\ngot:\n%s", tc.expected, string(output))
 			}
+		})
+	}
+}
+
+// formatExact runs FormatImports and compares the whole output.
+func formatExact(t *testing.T, input, want string, opt *commandline.Option) {
+	t.Helper()
+	got, err := core.FormatImports([]byte(input), opt)
+	if err != nil {
+		t.Fatalf("FormatImports: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func defaultOpt() *commandline.Option {
+	return &commandline.Option{ImportOrder: model.DefaultOrder, ModulePath: "myproject/module"}
+}
+
+// The import declaration is found in the syntax tree: an "import (" in a
+// comment before it is not the import block.
+func TestFormatImports_ImportParenInComment(t *testing.T) {
+	formatExact(t, `// Usage: import (
+package main
+
+/* see also: import ( "x" ) */
+import (
+	"os"
+	"fmt"
+)
+
+func main() { fmt.Println(os.Args) }
+`, `// Usage: import (
+package main
+
+/* see also: import ( "x" ) */
+import (
+	"fmt"
+	"os"
+)
+
+func main() { fmt.Println(os.Args) }
+`, defaultOpt())
+}
+
+// A parenthesis in a comment inside the import block does not end it.
+func TestFormatImports_ParenInImportComment(t *testing.T) {
+	formatExact(t, `package main
+
+import (
+	"os" // smile :)
+	"fmt"
+)
+
+func main() { fmt.Println(os.Args) }
+`, `package main
+
+import (
+	"fmt"
+	"os" // smile :)
+)
+
+func main() { fmt.Println(os.Args) }
+`, defaultOpt())
+}
+
+// The same path imported under two names is two imports.
+func TestFormatImports_SamePathTwoAliases(t *testing.T) {
+	formatExact(t, `package main
+
+import (
+	b "fmt"
+	"os"
+	a "fmt"
+)
+
+func main() { a.Println(); b.Println(os.Args) }
+`, `package main
+
+import (
+	"os"
+
+	a "fmt"
+	b "fmt"
+)
+
+func main() { a.Println(); b.Println(os.Args) }
+`, defaultOpt())
+}
+
+// Without a parenthesized import declaration the source is unchanged.
+func TestFormatImports_NoImportBlock(t *testing.T) {
+	src := "// Usage: import (\npackage main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println() }\n"
+	formatExact(t, src, src, defaultOpt())
+}
+
+// ReplaceImports fails closed: a result that is not valid Go is an error,
+// not output.
+func TestReplaceImports_RefusesUnparsableOutput(t *testing.T) {
+	src := []byte("package main\n\nimport (\n\t\"fmt\"\n)\n\nfunc main() { fmt.Println() }\n")
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := core.ReplaceImports(src, fset, file, "import (\n\t\"fmt\"\n")
+	if err == nil {
+		t.Fatalf("expected an error, got output:\n%s", got)
+	}
+	if got != nil {
+		t.Errorf("expected no output with the error, got:\n%s", got)
+	}
+
+	got, err = core.ReplaceImports(src, fset, file, "import (\n\t\"fmt\"\n)\n")
+	if err != nil || !bytes.Equal(got, src) {
+		t.Errorf("valid replacement: got %q, %v", got, err)
+	}
+}
+
+// --remove-import-comment / -r reaches FormatImports.
+func TestFormatImports_RemoveImportCommentFlag(t *testing.T) {
+	t.Setenv("GOREG_NOT_USE_CONFIGFILE", "1")
+	for _, flag := range []string{"-r", "--remove-import-comment"} {
+		t.Run(flag, func(t *testing.T) {
+			_, opt, err := commandline.OptParse([]string{flag, "--local", "myproject/module"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			formatExact(t, `package main
+
+import (
+	// standard library
+	"os" // arguments
+	"fmt" // printing
+)
+
+func main() { fmt.Println(os.Args) }
+`, `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() { fmt.Println(os.Args) }
+`, opt)
 		})
 	}
 }

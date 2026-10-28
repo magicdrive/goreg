@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -20,6 +21,8 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 		return nil, err
 	}
 
+	// importsMap is keyed by importKey (path and alias): the same path
+	// imported under two names is two imports, and both must be kept.
 	importsMap := make(map[string]model.ImportPack)
 	importGroupMap := map[model.ImportGroup][]string{
 		model.StdLib:       {},
@@ -38,8 +41,10 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 		line := fset.Position(imp.Pos()).Line
 		lineComment := lineComments[line]
 
-		importsMap[path] = model.ImportPack{
+		key := importKey(path, moduleAlias)
+		importsMap[key] = model.ImportPack{
 			Entity:      imp,
+			Path:        path,
 			LineComment: lineComment,
 			Doc:         docComments,
 			End:         endComment,
@@ -48,13 +53,13 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 
 		switch group {
 		case model.StdLib:
-			importGroupMap[model.StdLib] = append(importGroupMap[model.StdLib], path)
+			importGroupMap[model.StdLib] = append(importGroupMap[model.StdLib], key)
 		case model.ThirdParty:
-			importGroupMap[model.ThirdParty] = append(importGroupMap[model.ThirdParty], path)
+			importGroupMap[model.ThirdParty] = append(importGroupMap[model.ThirdParty], key)
 		case model.Local:
-			importGroupMap[model.Local] = append(importGroupMap[model.Local], path)
+			importGroupMap[model.Local] = append(importGroupMap[model.Local], key)
 		case model.Organization:
-			importGroupMap[model.Organization] = append(importGroupMap[model.Organization], path)
+			importGroupMap[model.Organization] = append(importGroupMap[model.Organization], key)
 		}
 	}
 
@@ -80,7 +85,15 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 	}
 
 	buf.WriteString(")\n")
-	return ReplaceImports(src, buf.String()), nil
+	return ReplaceImports(src, fset, node, buf.String())
+}
+
+// importKey identifies one import in FormatImports: its path, then its
+// alias after a NUL byte. NUL sorts before every byte of an import path, so
+// ordering keys as strings orders them by path exactly as ordering the paths
+// did, and only breaks ties between imports of the same path (by alias).
+func importKey(path, alias string) string {
+	return path + "\x00" + alias
 }
 
 func GetImportGroup(pkg string, opt *commandline.Option) model.ImportGroup {
@@ -155,10 +168,10 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string,
 				}
 				isNoneAliasImport = false
 			}
-			fmt.Fprintf(buf, "\t%s \"%s\"", importPack.Alias, imp)
+			fmt.Fprintf(buf, "\t%s \"%s\"", importPack.Alias, importPack.Path)
 		} else {
 			isNoneAliasImportExist = true
-			fmt.Fprintf(buf, "\t\"%s\"", imp)
+			fmt.Fprintf(buf, "\t\"%s\"", importPack.Path)
 		}
 
 		if importPack.End != "" {
@@ -214,40 +227,44 @@ func IsCommentBeforeImport(imp *ast.ImportSpec, comment *ast.Comment) bool {
 	return comment.Pos() < imp.Pos()
 }
 
-func ReplaceImports(src []byte, newImports string) []byte {
-	srcStr := string(src)
-	start := bytes.Index(src, []byte("import ("))
-	if start == -1 {
-		return src
-	}
-
-	end := start
-	bracketCount := 1
-
-	// len("import (") is 8
-	for i := start + 8; i < len(srcStr); i++ {
-		switch srcStr[i] {
-		case '(':
-			bracketCount++
-		case ')':
-			bracketCount--
-			if bracketCount == 0 {
-				end = i + 1
-				goto replace
-			}
+// ReplaceImports replaces the first parenthesized import declaration of
+// src with newImports. file and fset are the result of parsing src: the
+// declaration is located in the syntax tree, never by searching the text, so
+// an "import (" or a parenthesis in a comment or a string cannot move it.
+// One newline after the closing parenthesis is replaced too. Without a
+// parenthesized import declaration, src is returned unchanged.
+//
+// The result is parsed before it is returned: when it is not valid Go, an
+// error is returned instead, so that nothing broken is ever written.
+func ReplaceImports(src []byte, fset *token.FileSet, file *ast.File, newImports string) ([]byte, error) {
+	var decl *ast.GenDecl
+	for _, d := range file.Decls {
+		if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.IMPORT && gd.Lparen.IsValid() {
+			decl = gd
+			break
 		}
 	}
+	if decl == nil {
+		return src, nil
+	}
 
-replace:
-	if end < len(srcStr) && srcStr[end] == '\n' {
+	tf := fset.File(decl.Pos())
+	if tf == nil || tf.Size() != len(src) {
+		return nil, errors.New("goreg: the syntax tree does not belong to the source")
+	}
+	start := tf.Offset(decl.Pos())
+	end := tf.Offset(decl.Rparen) + 1
+	if end < len(src) && src[end] == '\n' {
 		end++
 	}
 
-	var builder strings.Builder
-	builder.Grow(len(srcStr) + len(newImports))
-	builder.WriteString(srcStr[:start])
-	builder.WriteString(newImports)
-	builder.WriteString(srcStr[end:])
+	out := make([]byte, 0, len(src)-(end-start)+len(newImports))
+	out = append(out, src[:start]...)
+	out = append(out, newImports...)
+	out = append(out, src[end:]...)
 
-	return []byte(builder.String())
+	if _, err := parser.ParseFile(token.NewFileSet(), "", out, parser.ParseComments); err != nil {
+		return nil, fmt.Errorf("goreg: the formatted source does not parse, nothing is written: %w", err)
+	}
+	return out, nil
 }

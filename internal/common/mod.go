@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -47,6 +48,8 @@ func FindGoregToml() (string, error) {
 	return "", errors.New("goreg.toml not found")
 }
 
+// LoadToml reads the goreg.toml at filePath. Keys it does not set take
+// their default values (an empty file is the default configuration).
 func LoadToml(filePath string) (*model.Config, error) {
 
 	data, err := os.ReadFile(filePath)
@@ -54,20 +57,29 @@ func LoadToml(filePath string) (*model.Config, error) {
 		return nil, err
 	}
 
-	var cfg *model.Config
-	if err := toml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+	cfg := &model.Config{}
+	if err := toml.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("%s: %w", filePath, err)
 	}
+	cfg.SetDefaults()
 
 	return cfg, nil
 }
 
+// LoadConfig returns the configuration of the goreg.toml FindGoregToml
+// finds, or the default configuration when there is none. A goreg.toml that
+// exists but cannot be read or is not valid TOML is an error: it is never
+// silently replaced by the defaults.
 func LoadConfig() (*model.Config, error) {
-	if filePath, err := FindGoregToml(); err != nil {
+	filePath, err := FindGoregToml()
+	if err != nil {
 		cfg := &model.Config{}
 		cfg.SetDefaults()
 		return cfg, nil
-	} else {
-		return LoadToml(filePath)
 	}
+	cfg, err := LoadToml(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+	return cfg, nil
 }
