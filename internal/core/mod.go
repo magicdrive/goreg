@@ -9,6 +9,7 @@ import (
 	"golang.org/x/tools/imports"
 
 	"github.com/magicdrive/goreg/internal/commandline"
+	"github.com/magicdrive/goreg/internal/linesafe"
 )
 
 func Apply(opt *commandline.Option) error {
@@ -23,10 +24,7 @@ func Apply(opt *commandline.Option) error {
 		return err
 	}
 
-	formatted, err := imports.Process(filename, src, &imports.Options{
-		FormatOnly: true,
-		Comments:   true,
-	})
+	formatted, err := formatSource(filename, src)
 	if err != nil {
 		return err
 	}
@@ -47,6 +45,21 @@ func Apply(opt *commandline.Option) error {
 		_, err := os.Stdout.Write(sorted)
 		return err
 	}
+}
+
+// formatSource formats src as gofmt does and merges its import
+// declarations into one (imports.Process with FormatOnly). A source that
+// contains a line directive goes to linesafe, a copy of that code that
+// ignores line directives where x/tools applied them: x/tools v0.52.0 loops
+// forever, printing "panic avoided", or panics on some of those sources.
+func formatSource(filename string, src []byte) ([]byte, error) {
+	if linesafe.HasLineDirective(src) {
+		return linesafe.Process(filename, src)
+	}
+	return imports.Process(filename, src, &imports.Options{
+		FormatOnly: true,
+		Comments:   true,
+	})
 }
 
 // writeTempFile writes the new content into the temporary file; tests

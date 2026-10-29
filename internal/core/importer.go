@@ -38,7 +38,7 @@ func FormatImports(src []byte, opt *commandline.Option) ([]byte, error) {
 		group := GetImportGroup(path, opt)
 
 		docComments, endComment, moduleAlias := ExtractComments(imp, opt)
-		line := fset.Position(imp.Pos()).Line
+		line := fset.PositionFor(imp.Pos(), false).Line
 		lineComment := lineComments[line]
 
 		key := importKey(path, moduleAlias)
@@ -148,7 +148,12 @@ func WriteImports(fset *token.FileSet, buf *bytes.Buffer, pkgs []string,
 			lineBreaked = true
 		}
 
-		for _, c := range importPack.Doc {
+		for i, c := range importPack.Doc {
+			if isLineDirective(fset, importPack.Entity.Doc.List[i]) {
+				// A //line directive applies only at the start of a line.
+				buf.WriteString(c + "\n")
+				continue
+			}
 			buf.WriteString(fmt.Sprintf("\t%s\n", c))
 		}
 
@@ -216,11 +221,18 @@ func ExtractLineComments(node *ast.File, fset *token.FileSet, opt *commandline.O
 	for _, commentGroup := range node.Comments {
 		for _, comment := range commentGroup.List {
 			nextPos := comment.Pos() + 1
-			line := fset.Position(nextPos).Line
+			line := fset.PositionFor(nextPos, false).Line
 			precedingComments[line] = comment
 		}
 	}
 	return precedingComments
+}
+
+// isLineDirective reports whether c is a //line directive: the comment
+// starts the line it is on. An indented "//line" is an ordinary comment and
+// stays one.
+func isLineDirective(fset *token.FileSet, c *ast.Comment) bool {
+	return strings.HasPrefix(c.Text, "//line ") && fset.PositionFor(c.Pos(), false).Column == 1
 }
 
 func IsCommentBeforeImport(imp *ast.ImportSpec, comment *ast.Comment) bool {
