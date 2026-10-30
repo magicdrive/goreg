@@ -131,6 +131,12 @@ smoke: build
 	printf '%s\n' "$$out" | grep -q '^package main' || { echo "smoke: formatting failed"; exit 1; }
 	@echo "smoke: ok ($$($(BUILD_DIR)/$(BINARY_NAME) --version))"
 
+# Check install.sh (shellcheck must be installed)
+.PHONY: shellcheck
+shellcheck:
+	@sh -n install.sh
+	@shellcheck -s sh install.sh
+
 # Every local quality gate that CI runs on each pull request
 .PHONY: check
 check: fmt-check vet tidy-check lint test test-race vuln smoke hephaestus-check
@@ -300,6 +306,7 @@ help:
 	@echo "  make lint              - Run staticcheck"
 	@echo "  make vuln              - Run govulncheck"
 	@echo "  make smoke             - Build and run --version, --help and a formatting run"
+	@echo "  make shellcheck        - Check install.sh with shellcheck"
 	@echo "  make check             - Run every local quality gate"
 	@echo "  make actionlint        - Lint the GitHub Actions workflows"
 	@echo "  make renovate-check    - Validate renovate.json"
