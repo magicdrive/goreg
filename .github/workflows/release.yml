@@ -76,7 +76,7 @@ jobs:
           # Release binaries are built without restored caches.
           cache: false
       - name: Build, archive and checksum
-        uses: magicdrive/hephaestus@83721c3ebfc9a9abc4bdc1ade8da0c46240ef0c7 # v1.4.0
+        uses: magicdrive/hephaestus@97e0a978588918853d65886b594ee34df368f022 # v1.5.1
         with:
           command: run
           stages: build,archive,checksum
@@ -127,7 +127,7 @@ jobs:
         # hephaestus.yaml (brews[].skip_upload: auto). The action fails here
         # if a prerelease would update the tap. Reads only the configuration.
         id: plan
-        uses: magicdrive/hephaestus@83721c3ebfc9a9abc4bdc1ade8da0c46240ef0c7 # v1.4.0
+        uses: magicdrive/hephaestus@97e0a978588918853d65886b594ee34df368f022 # v1.5.1
         with:
           command: plan
       - name: Require the tap token
@@ -144,7 +144,7 @@ jobs:
         # public, since a published release cannot be taken back. Prereleases
         # (vX.Y.Z-rc.N) skip the tap, so this step and the token are skipped.
         if: steps.plan.outputs.tap == 'publish'
-        uses: magicdrive/hephaestus@83721c3ebfc9a9abc4bdc1ade8da0c46240ef0c7 # v1.4.0
+        uses: magicdrive/hephaestus@97e0a978588918853d65886b594ee34df368f022 # v1.5.1
         with:
           command: run
           stages: formula,tap
@@ -159,13 +159,13 @@ jobs:
             dist/goreg_*.tar.gz
             dist/goreg_checksums.txt
       - name: Publish the GitHub Release
-        uses: magicdrive/hephaestus@83721c3ebfc9a9abc4bdc1ade8da0c46240ef0c7 # v1.4.0
+        uses: magicdrive/hephaestus@97e0a978588918853d65886b594ee34df368f022 # v1.5.1
         with:
           command: release
       - name: Generate the formula and open a tap pull request
         # Only the tap token: the release is already published above.
         if: steps.plan.outputs.tap == 'publish'
-        uses: magicdrive/hephaestus@83721c3ebfc9a9abc4bdc1ade8da0c46240ef0c7 # v1.4.0
+        uses: magicdrive/hephaestus@97e0a978588918853d65886b594ee34df368f022 # v1.5.1
         with:
           command: run
           stages: formula,tap
