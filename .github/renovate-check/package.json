@@ -4,6 +4,6 @@
   "description": "CI-only: the Renovate whose renovate-config-validator checks renovate.json (make renovate-check). Never a runtime dependency.",
   "license": "UNLICENSED",
   "dependencies": {
-    "renovate": "44.241.0"
+    "renovate": "44.257.5"
   }
 }
