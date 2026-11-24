@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Copied from golang.org/x/tools v0.52.0, internal/imports/sortimports.go
+// Copied from golang.org/x/tools v0.53.0, internal/imports/sortimports.go
 // (itself a hacked up copy of go/ast/import.go). The changes are marked
 // "goreg:"; see the package comment.
 
