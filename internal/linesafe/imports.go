@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package linesafe is the FormatOnly path of golang.org/x/tools/imports
-// (v0.52.0: internal/imports Process, formatFile, sortImports, sortSpecs,
+// (v0.53.0: internal/imports Process, formatFile, sortImports, sortSpecs,
 // mergeImports, the import groups of fix.go, and go/ast/astutil.Imports),
 // copied so that one defect can be fixed: those functions computed line
 // numbers with token.File.Line, which applies //line directives, and passed
