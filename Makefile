@@ -26,7 +26,7 @@ PUBLISH ?= $(HEPHAESTUS) publish
 # renovate: datasource=go depName=honnef.co/go/tools
 STATICCHECK_VERSION ?= v0.8.2
 # renovate: datasource=go depName=golang.org/x/vuln
-GOVULNCHECK_VERSION ?= v1.9.0
+GOVULNCHECK_VERSION ?= v1.10.0
 # renovate: datasource=go depName=github.com/rhysd/actionlint
 ACTIONLINT_VERSION ?= v1.7.12
 
