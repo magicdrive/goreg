@@ -15,7 +15,7 @@ import (
 )
 
 // Never pass a source with a line directive to imports.Process in these
-// tests: x/tools v0.52.0 may loop forever on it, logging without bound.
+// tests: x/tools v0.53.0 may loop forever on it, logging without bound.
 
 // upstream is what goreg ran before: imports.Process with goreg's options.
 func upstream(t *testing.T, src []byte) ([]byte, error) {
@@ -398,7 +398,7 @@ func TestHasLineDirective(t *testing.T) {
 // directives (internal/imports/sortimports.go): if it does, remove this
 // package and call imports.Process for every source; if not, compare the
 // copy with the new version and update copiedFrom.
-const copiedFrom = "v0.52.0"
+const copiedFrom = "v0.53.0"
 
 func TestCopiedFromTheRequiredVersion(t *testing.T) {
 	gomod, err := os.ReadFile("../../go.mod")
